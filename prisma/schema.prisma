@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  password      String
+  cbuAlias      String?
+  consultationFee   Float  @default(5000)
+  subscriptionFee   Float  @default(5000)
+  commissionPercent Float  @default(10)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Lawyer {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String?
+  googleId        String?  @unique
+  googleRefreshToken String?
+  firstName       String
+  lastName        String
+  phone           String?
+  profilePhoto    String?
+  matricula       String   @default("")
+  titleDocument   String?
+  narrative       String?
+  experience      String?
+  specialties     String   @default("")
+  province        String   @default("")
+  city            String   @default("")
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  cbuAlias        String?
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  status          String   @default("incomplete")
+  subscriptionStatus String @default("pending")
+  subscriptionPaidUntil DateTime?
+  consultationDuration Int @default(60)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointments    Appointment[]
+  reviews         Review[]
+  crmClients      CrmClient[]
+  messages        Message[]       @relation("LawyerMessages")
+  availability    Availability[]
+  payments        Payment[]
+}
+
+model Availability {
+  id        String @id @default(cuid())
+  lawyerId  String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+
+  lawyer    Lawyer @relation(fields: [lawyerId], references: [id], onDelete: Cascade)
+
+  @@unique([lawyerId, dayOfWeek, startTime])
+}
+
+model Client {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String?
+  image         String?
+  phone         String?
+  googleId      String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointments  Appointment[]
+  reviews       Review[]
+  messages      Message[]     @relation("ClientMessages")
+  payments      Payment[]
+}
+
+model Appointment {
+  id              String   @id @default(cuid())
+  lawyerId        String
+  clientId        String
+  dateTime        DateTime
+  googleEventId   String?
+  meetLink        String?
+  status          String   @default("pending_payment")
+  paymentStatus   String   @default("pending")
+  paymentId       String?
+  amount          Float
+  platformFee     Float
+  lawyerAmount    Float
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lawyer          Lawyer   @relation(fields: [lawyerId], references: [id])
+  client          Client   @relation(fields: [clientId], references: [id])
+  caseTracking    CaseTracking?
+  payments        Payment[]
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  lawyerId  String
+  clientId  String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  lawyer    Lawyer   @relation(fields: [lawyerId], references: [id])
+  client    Client   @relation(fields: [clientId], references: [id])
+}
+
+model CrmClient {
+  id          String   @id @default(cuid())
+  lawyerId    String
+  name        String
+  phone       String?
+  email       String?
+  address     String?
+  situation   String?
+  caseType    String?
+  status      String   @default("in_progress")
+  source      String   @default("platform")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lawyer      Lawyer   @relation(fields: [lawyerId], references: [id])
+}
+
+model CaseTracking {
+  id            String   @id @default(cuid())
+  appointmentId String   @unique
+  status        String   @default("initiated")
+  description   String?
+  updates       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  senderId    String
+  senderType  String
+  lawyerId    String
+  clientId    String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  lawyer      Lawyer   @relation("LawyerMessages", fields: [lawyerId], references: [id])
+  client      Client   @relation("ClientMessages", fields: [clientId], references: [id])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  userType    String
+  type        String
+  title       String
+  message     String
+  link        String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  appointmentId   String?
+  lawyerId        String?
+  clientId        String?
+  type            String
+  amount          Float
+  platformFee     Float    @default(0)
+  lawyerAmount    Float    @default(0)
+  status          String   @default("pending")
+  mpPaymentId     String?
+  mpPreferenceId  String?
+  mpMerchantOrder String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id])
+  lawyer          Lawyer?      @relation(fields: [lawyerId], references: [id])
+  client          Client?      @relation(fields: [clientId], references: [id])
+
+  @@index([mpPaymentId])
+  @@index([appointmentId, status])
+  @@index([lawyerId, type, status])
+}

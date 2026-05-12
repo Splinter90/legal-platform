@@ -1,14 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { User, Lock, ArrowLeft, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/ui/brand-logo";
 
 type LoginType = "client" | "lawyer" | "admin";
+
+const URL_ERRORS: Record<string, string> = {
+  unauthorized:
+    "Tu cuenta de Google no tiene permisos para esta sección.",
+  email_already_client:
+    "Este email ya está registrado como cliente. Usá otro Gmail para registrarte como abogado.",
+  OAuthSignin:
+    "No se pudo iniciar sesión con Google. Revisá la configuración de OAuth.",
+  OAuthCallback:
+    "Falló el callback de Google. Verificá el redirect URI en Google Cloud.",
+  Callback: "Hubo un problema al completar el login. Probá de nuevo.",
+};
 
 function GoogleIcon() {
   return (
@@ -23,35 +34,29 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loginType, setLoginType] = useState<LoginType>("client");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [adminForm, setAdminForm] = useState({ username: "", password: "" });
-  const [lawyerForm, setLawyerForm] = useState({ email: "", password: "" });
-  const [clientForm, setClientForm] = useState({ email: "", password: "" });
+  const [adminForm, setAdminForm] = useState({ username: "", password: "", totp: "" });
+  const [needsTotp, setNeedsTotp] = useState(false);
+
+  useEffect(() => {
+    const urlError = searchParams.get("error");
+    if (urlError) {
+      setError(URL_ERRORS[urlError] || `Error de autenticación: ${urlError}`);
+      if (urlError === "unauthorized") {
+        setLoginType("lawyer");
+      }
+    }
+  }, [searchParams]);
 
   async function handleGoogleLogin(role: "client" | "lawyer") {
     setLoading(true);
+    document.cookie = `signin_intent=${role}; path=/; max-age=300; samesite=lax`;
     const callbackUrl = role === "lawyer" ? "/lawyer/dashboard" : "/client/dashboard";
     await signIn("google", { callbackUrl });
-  }
-
-  async function handleClientLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    const res = await signIn("client-login", {
-      email: clientForm.email,
-      password: clientForm.password,
-      redirect: false,
-    });
-    if (res?.error) {
-      setError("Credenciales incorrectas");
-      setLoading(false);
-    } else {
-      router.push("/client/dashboard");
-    }
   }
 
   async function handleAdminLogin(e: React.FormEvent) {
@@ -61,30 +66,25 @@ export default function LoginPage() {
     const res = await signIn("admin-login", {
       username: adminForm.username,
       password: adminForm.password,
+      totp: adminForm.totp,
       redirect: false,
     });
     if (res?.error) {
-      setError("Credenciales incorrectas");
+      if (res.error === "TwoFactorRequired") {
+        setNeedsTotp(true);
+        setError("");
+      } else if (res.error === "TwoFactorInvalid") {
+        setNeedsTotp(true);
+        setError("Código 2FA incorrecto.");
+      } else if (res.error === "RateLimitExceeded") {
+        setError("Demasiados intentos fallidos. Esperá 15 minutos antes de volver a probar.");
+      } else {
+        setError("Credenciales incorrectas");
+        setNeedsTotp(false);
+      }
       setLoading(false);
     } else {
       router.push("/admin/dashboard");
-    }
-  }
-
-  async function handleLawyerLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    const res = await signIn("lawyer-login", {
-      email: lawyerForm.email,
-      password: lawyerForm.password,
-      redirect: false,
-    });
-    if (res?.error) {
-      setError("Credenciales incorrectas o perfil no aprobado");
-      setLoading(false);
-    } else {
-      router.push("/lawyer/dashboard");
     }
   }
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Forms */}
+          {/* Body */}
           <div className="px-8 py-8">
             {error && (
               <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -161,52 +161,9 @@ export default function LoginPage() {
                   <GoogleIcon />
                   Continuar con Google
                 </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/10" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                    <span className="px-4 bg-slate-900 text-slate-500">o con email</span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleClientLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={clientForm.email}
-                      onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-                      required
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Contrasena
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Tu contrasena"
-                      value={clientForm.password}
-                      onChange={(e) => setClientForm({ ...clientForm, password: e.target.value })}
-                      required
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                    />
-                  </div>
-                  <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
-                    {loading ? "Ingresando..." : "Ingresar"}
-                  </Button>
-                </form>
-                <p className="text-center text-sm text-slate-400">
-                  No tenes cuenta?{" "}
-                  <Link href="/register-client" className="text-brand-300 font-semibold hover:text-brand-200">
-                    Registrate aqui
-                  </Link>
+                <p className="text-center text-xs text-slate-500 leading-relaxed">
+                  Iniciá sesión con tu cuenta de Gmail. Necesaria para integrar
+                  Google Calendar y recibir el link de Meet.
                 </p>
               </div>
             )}
@@ -223,51 +180,14 @@ export default function LoginPage() {
                   <GoogleIcon />
                   Ingresar con Google
                 </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/10" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                    <span className="px-4 bg-slate-900 text-slate-500">o con email</span>
-                  </div>
-                </div>
-
-                <form onSubmit={handleLawyerLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={lawyerForm.email}
-                      onChange={(e) => setLawyerForm({ ...lawyerForm, email: e.target.value })}
-                      required
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                      Contrasena
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Tu contrasena"
-                      value={lawyerForm.password}
-                      onChange={(e) => setLawyerForm({ ...lawyerForm, password: e.target.value })}
-                      required
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                    />
-                  </div>
-                  <Button type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
-                    {loading ? "Ingresando..." : "Ingresar"}
-                  </Button>
-                </form>
-                <p className="text-center text-sm text-slate-400">
-                  No tenes cuenta?{" "}
+                <p className="text-center text-xs text-slate-500 leading-relaxed">
+                  Tu cuenta de Gmail se usa para sincronizar Google Calendar y
+                  generar las videollamadas de Meet.
+                </p>
+                <p className="text-center text-sm text-slate-400 pt-2">
+                  Sos abogado y aún no tenés perfil?{" "}
                   <Link href="/register-lawyer" className="text-brand-300 font-semibold hover:text-brand-200">
-                    Registrate aqui
+                    Registrate aquí
                   </Link>
                 </p>
               </div>
@@ -285,7 +205,8 @@ export default function LoginPage() {
                     value={adminForm.username}
                     onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                    disabled={needsTotp}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-60"
                   />
                 </div>
                 <div>
@@ -298,12 +219,49 @@ export default function LoginPage() {
                     value={adminForm.password}
                     onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                     required
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                    disabled={needsTotp}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent disabled:opacity-60"
                   />
                 </div>
+                {needsTotp && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                      Código 2FA (6 dígitos)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      placeholder="123456"
+                      value={adminForm.totp}
+                      onChange={(e) => setAdminForm({ ...adminForm, totp: e.target.value.replace(/\D/g, "") })}
+                      autoFocus
+                      required
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent tracking-widest text-center font-mono"
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      Ingresá el código de tu app de autenticación.
+                    </p>
+                  </div>
+                )}
                 <Button type="submit" variant="accent" size="lg" className="w-full" disabled={loading}>
-                  {loading ? "Ingresando..." : "Ingresar como Admin"}
+                  {loading ? "Ingresando..." : needsTotp ? "Verificar código" : "Ingresar como Admin"}
                 </Button>
+                {needsTotp && (
+                  <button
+                    type="button"
+                    className="w-full text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                    onClick={() => {
+                      setNeedsTotp(false);
+                      setAdminForm({ ...adminForm, totp: "" });
+                      setError("");
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                )}
               </form>
             )}
           </div>

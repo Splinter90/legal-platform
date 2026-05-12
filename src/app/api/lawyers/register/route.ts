@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { validateEmail, validatePassword, validateRequired } from "@/lib/validations";
+import { validateEmail, validateRequired } from "@/lib/validations";
 import { geocodeAddress } from "@/lib/geocode";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = rateLimit({
+      key: `register-lawyer:${getClientIp(req)}`,
+      limit: 5,
+      windowMs: 60_000,
+    });
+    if (!rl.ok) return rateLimitResponse(rl);
+
     const body = await req.json();
     const {
       firstName,
       lastName,
       email,
-      password,
       phone,
       matricula,
       specialties,
@@ -29,7 +35,6 @@ export async function POST(req: NextRequest) {
       nombre: firstName,
       apellido: lastName,
       email,
-      contraseña: password,
       matrícula: matricula,
       especialidades: specialties,
       provincia: province,
@@ -41,11 +46,6 @@ export async function POST(req: NextRequest) {
 
     if (!validateEmail(email)) {
       return NextResponse.json({ error: "Formato de email inválido" }, { status: 400 });
-    }
-
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
     const existing = await prisma.lawyer.findUnique({ where: { email } });
@@ -64,8 +64,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const coords = await geocodeAddress(city.trim(), province.trim(), address);
 
     const lawyer = await prisma.lawyer.create({
@@ -73,7 +71,6 @@ export async function POST(req: NextRequest) {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.toLowerCase().trim(),
-        password: hashedPassword,
         phone: phone || null,
         matricula: matricula.trim(),
         specialties: specialties.trim(),

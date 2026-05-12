@@ -2,7 +2,10 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { prisma } from "./prisma";
+import { getIpFromHeaders, rateLimit } from "./rate-limit";
+import { verifyTotp } from "./totp";
 
 async function refreshAccessToken(token: any) {
   try {
@@ -51,78 +54,70 @@ export const authOptions: NextAuthOptions = {
         ]
       : []),
     CredentialsProvider({
-      id: "client-login",
-      name: "Cliente",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Contraseña", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-        const client = await prisma.client.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!client || !client.password) return null;
-        const valid = await bcrypt.compare(credentials.password, client.password);
-        if (!valid) return null;
-        return {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          image: client.image,
-          role: "client",
-        } as any;
-      },
-    }),
-    CredentialsProvider({
       id: "admin-login",
       name: "Admin",
       credentials: {
         username: { label: "Usuario", type: "text" },
         password: { label: "Contraseña", type: "password" },
+        totp: { label: "Codigo 2FA", type: "text" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.username || !credentials?.password) return null;
+
+        const ip = getIpFromHeaders(req?.headers as Record<string, string | string[] | undefined> | undefined);
+        const windowMs = 15 * 60 * 1000;
+
+        const ipLimit = rateLimit({
+          key: `admin-login:ip:${ip}`,
+          limit: 10,
+          windowMs,
+        });
+        if (!ipLimit.ok) throw new Error("RateLimitExceeded");
+
+        const userLimit = rateLimit({
+          key: `admin-login:user:${credentials.username.toLowerCase()}`,
+          limit: 5,
+          windowMs,
+        });
+        if (!userLimit.ok) throw new Error("RateLimitExceeded");
+
         const admin = await prisma.admin.findUnique({
           where: { username: credentials.username },
         });
         if (!admin) return null;
         const valid = await bcrypt.compare(credentials.password, admin.password);
         if (!valid) return null;
+
+        if (admin.totpEnabled && admin.totpSecret) {
+          if (!credentials.totp) throw new Error("TwoFactorRequired");
+          if (!verifyTotp(admin.totpSecret, credentials.totp)) {
+            throw new Error("TwoFactorInvalid");
+          }
+        }
+
         return { id: admin.id, name: admin.username, role: "admin" } as any;
-      },
-    }),
-    CredentialsProvider({
-      id: "lawyer-login",
-      name: "Abogado",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Contraseña", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-        const lawyer = await prisma.lawyer.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!lawyer || !lawyer.password) return null;
-        const valid = await bcrypt.compare(credentials.password, lawyer.password);
-        if (!valid) return null;
-        return {
-          id: lawyer.id,
-          name: `${lawyer.firstName} ${lawyer.lastName}`,
-          email: lawyer.email,
-          role: "lawyer",
-          lawyerStatus: lawyer.status,
-        } as any;
       },
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
         const email = user.email!;
+        const intent =
+          (cookies().get("signin_intent")?.value as "lawyer" | "client" | undefined) ||
+          "client";
+
+        const googleProfile = profile as
+          | { given_name?: string; family_name?: string; name?: string }
+          | undefined;
+        const fullName = googleProfile?.name || user.name || "";
+        const firstName =
+          googleProfile?.given_name || fullName.split(" ").slice(0, -1).join(" ") || fullName;
+        const lastName =
+          googleProfile?.family_name || fullName.split(" ").slice(-1).join(" ") || "";
 
         const lawyer = await prisma.lawyer.findUnique({ where: { email } });
+
         if (lawyer) {
           const updateData: any = {};
           if (account.refresh_token) {
@@ -134,14 +129,27 @@ export const authOptions: NextAuthOptions = {
           if (Object.keys(updateData).length > 0) {
             await prisma.lawyer.update({ where: { email }, data: updateData });
           }
-          if (lawyer.status !== "approved") {
-            return `/login?error=lawyer_${lawyer.status}`;
+          if (lawyer.status === "incomplete") {
+            return "/register-lawyer/complete";
           }
           return true;
         }
 
-        const existing = await prisma.client.findUnique({ where: { email } });
-        if (!existing) {
+        const existingClient = await prisma.client.findUnique({ where: { email } });
+
+        if (intent === "lawyer") {
+          if (existingClient) {
+            return "/login?error=email_already_client";
+          }
+          const params = new URLSearchParams({
+            email,
+            firstName,
+            lastName,
+          });
+          return `/register-lawyer?${params.toString()}`;
+        }
+
+        if (!existingClient) {
           await prisma.client.create({
             data: {
               email,
@@ -150,12 +158,13 @@ export const authOptions: NextAuthOptions = {
               googleId: account.providerAccountId,
             },
           });
-        } else if (!existing.googleId) {
+        } else if (!existingClient.googleId) {
           await prisma.client.update({
             where: { email },
             data: { googleId: account.providerAccountId, image: user.image },
           });
         }
+        return true;
       }
       return true;
     },

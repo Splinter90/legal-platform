@@ -96,6 +96,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   { label: "Iniciar sesion", href: "/login" },
                   { label: "Registrar abogado", href: "/register-lawyer" },
                   { label: "Registrar cliente", href: "/register-client" },
+                  { label: "Politica de Privacidad", href: "/privacidad" },
+                  { label: "Terminos y Condiciones", href: "/terminos" },
+                  { label: "Contacto", href: "/contacto" },
                 ].map((link) => (
                   <li key={link.label}>
                     <Link
@@ -135,9 +138,21 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             <p className="text-slate-500 text-sm">
               (c) 2026 Leges Digital. Todos los derechos reservados.
             </p>
-            <p className="text-slate-500 text-xs">
-              Estudio Juridico Digital - Mar del Plata, Argentina
-            </p>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+              <Link href="/privacidad" className="hover:text-brand-400 transition-colors">
+                Privacidad
+              </Link>
+              <span className="text-slate-700">·</span>
+              <Link href="/terminos" className="hover:text-brand-400 transition-colors">
+                Terminos
+              </Link>
+              <span className="text-slate-700">·</span>
+              <Link href="/contacto" className="hover:text-brand-400 transition-colors">
+                Contacto
+              </Link>
+              <span className="text-slate-700">·</span>
+              <span>Mar del Plata, Argentina</span>
+            </div>
           </div>
         </div>
       </footer>

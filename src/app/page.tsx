@@ -24,9 +24,60 @@ import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
 import { SectionHeading } from "@/components/ui/section-heading";
 
+const SITE_URL = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(
+  /\/$/,
+  ""
+);
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "LegalService",
+  name: "Leges Digital",
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo.jpeg`,
+  description:
+    "Marketplace que conecta clientes con abogados matriculados en la Republica Argentina. Consultas online con pago seguro y agenda integrada.",
+  areaServed: { "@type": "Country", name: "Argentina" },
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Mar del Plata",
+    addressRegion: "Buenos Aires",
+    addressCountry: "AR",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer service",
+    email: "contacto@legesdigital.com",
+    telephone: "+54-9-223-618-2864",
+    availableLanguage: ["Spanish"],
+  },
+  sameAs: [],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  url: SITE_URL,
+  name: "Leges Digital",
+  inLanguage: "es-AR",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/abogados?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-white font-display">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">

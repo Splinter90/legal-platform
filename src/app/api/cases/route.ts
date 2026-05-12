@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidCaseStatus } from "@/lib/validations";
+import { requireLawyerFeatureAccess } from "@/lib/lawyer-access";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -15,6 +16,13 @@ export async function GET() {
 
   if (role !== "client" && role !== "lawyer") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  if (role === "lawyer") {
+    const access = await requireLawyerFeatureAccess(userId);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
   }
 
   const where = role === "client"
@@ -44,6 +52,11 @@ export async function POST(req: NextRequest) {
   }
 
   const lawyerId = (session.user as any).id;
+  const access = await requireLawyerFeatureAccess(lawyerId);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   const { appointmentId, description, status } = await req.json();
 
   if (!appointmentId) {
@@ -114,6 +127,12 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "lawyer") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const lawyerId = (session.user as any).id;
+  const access = await requireLawyerFeatureAccess(lawyerId);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   const { id, status, description, updates } = await req.json();

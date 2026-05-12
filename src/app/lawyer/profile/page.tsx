@@ -99,6 +99,15 @@ export default function LawyerProfile() {
   const paidUntil = subscription?.paidUntil
     ? new Date(subscription.paidUntil).toLocaleDateString("es-AR")
     : null;
+  const canSubscribe = lawyer.status === "approved";
+  const subscribeBlockedReason =
+    lawyer.status === "pending"
+      ? "Esperá la aprobación del Admin para activar la suscripción"
+      : lawyer.status === "rejected"
+      ? "Tu solicitud fue rechazada. Reenviala desde el dashboard."
+      : lawyer.status === "suspended"
+      ? "Tu cuenta está suspendida"
+      : "Completá tu perfil para continuar";
 
   return (
     <div className="animate-in">
@@ -147,10 +156,21 @@ export default function LawyerProfile() {
                 </div>
               </div>
               {!isSubscribed && (
-                <Button onClick={handleSubscribe} disabled={subscribing}>
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  {subscribing ? "Procesando..." : `Pagar $${(subscription?.amount || 5000).toLocaleString("es-AR")}/mes`}
-                </Button>
+                <div className="flex flex-col items-end gap-1">
+                  <Button
+                    onClick={handleSubscribe}
+                    disabled={subscribing || !canSubscribe}
+                    title={!canSubscribe ? subscribeBlockedReason : undefined}
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {subscribing ? "Procesando..." : `Pagar $${(subscription?.amount || 5000).toLocaleString("es-AR")}/mes`}
+                  </Button>
+                  {!canSubscribe && (
+                    <p className="text-xs text-amber-700 max-w-xs text-right">
+                      {subscribeBlockedReason}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </CardContent>

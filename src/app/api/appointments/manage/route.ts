@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cancelAppointmentWithRefund } from "@/lib/appointments";
+import { sendAppointmentRefundedToClient } from "@/lib/email";
 
 export async function PUT(req: NextRequest) {
   try {
@@ -20,7 +22,7 @@ export async function PUT(req: NextRequest) {
     const appointment = await prisma.appointment.findUnique({
       where: { id },
       include: {
-        client: { select: { id: true, name: true } },
+        client: { select: { id: true, name: true, email: true } },
         lawyer: { select: { firstName: true, lastName: true } },
       },
     });
@@ -42,25 +44,68 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const lawyerFullName = `${appointment.lawyer.firstName} ${appointment.lawyer.lastName}`.trim();
+    const dateStr = new Date(appointment.dateTime).toLocaleDateString("es-AR");
+
+    if (status === "cancelled") {
+      const result = await cancelAppointmentWithRefund(appointment.id);
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: result.reason || "No se pudo cancelar" },
+          { status: result.status || 400 }
+        );
+      }
+
+      const refundMsg = result.refund.attempted
+        ? result.refund.ok
+          ? " Te reembolsamos el pago."
+          : " El reembolso quedo pendiente, lo procesamos manualmente."
+        : "";
+
+      await prisma.notification.create({
+        data: {
+          userId: appointment.client.id,
+          userType: "client",
+          type: "appointment_cancelled",
+          title: "Cita cancelada",
+          message: `Tu cita con ${lawyerFullName} fue cancelada.${refundMsg}`,
+          link: "/client/appointments",
+          appointmentId: appointment.id,
+        },
+      });
+
+      if (result.refund.attempted) {
+        sendAppointmentRefundedToClient(
+          appointment.client.email,
+          appointment.client.name,
+          lawyerFullName,
+          dateStr,
+          result.refund.amount || appointment.amount,
+          result.refund.ok
+        ).catch((err) => console.error("refund email failed:", err));
+      }
+
+      return NextResponse.json({
+        ...result.appointment,
+        refund: result.refund,
+      });
+    }
+
     const updated = await prisma.appointment.update({
       where: { id },
       data: { status },
     });
 
-    const statusMessages: Record<string, string> = {
-      completed: `Tu consulta con ${appointment.lawyer.firstName} ${appointment.lawyer.lastName} fue marcada como completada.`,
-      cancelled: `Tu cita con ${appointment.lawyer.firstName} ${appointment.lawyer.lastName} fue cancelada.`,
-    };
-
-    if (statusMessages[status]) {
+    if (status === "completed") {
       await prisma.notification.create({
         data: {
           userId: appointment.client.id,
           userType: "client",
-          type: `appointment_${status}`,
-          title: status === "completed" ? "Consulta completada" : "Cita cancelada",
-          message: statusMessages[status],
+          type: "appointment_completed",
+          title: "Consulta completada",
+          message: `Tu consulta con ${lawyerFullName} fue marcada como completada.`,
           link: "/client/appointments",
+          appointmentId: appointment.id,
         },
       });
     }

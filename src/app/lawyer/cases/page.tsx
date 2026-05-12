@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { formatDateTime } from "@/lib/utils";
 import { FileText, Clock, CheckCircle, AlertCircle, Loader2, Edit2 } from "lucide-react";
+import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
 
 interface CaseItem {
   id: string;
@@ -39,15 +40,25 @@ export default function LawyerCases() {
   const [editDescription, setEditDescription] = useState("");
   const [editUpdates, setEditUpdates] = useState("");
   const [saving, setSaving] = useState(false);
+  const [access, setAccess] = useState<any>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
-    fetchCases();
+    fetch("/api/lawyers/me")
+      .then((r) => r.json())
+      .then((data) => {
+        setAccess(data.access);
+        setAccessChecked(true);
+        if (data.access?.canAccessFeatures) fetchCases();
+        else setLoading(false);
+      });
   }, []);
 
   async function fetchCases() {
     setLoading(true);
     const res = await fetch("/api/cases");
-    setCases(await res.json());
+    const data = await res.json();
+    setCases(Array.isArray(data) ? data : []);
     setLoading(false);
   }
 
@@ -72,12 +83,17 @@ export default function LawyerCases() {
   const filtered =
     filter === "all" ? cases : cases.filter((c) => c.status === filter);
 
-  if (loading) {
+  if (!accessChecked || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
       </div>
     );
+  }
+
+  const lockReason = access ? deriveLockReason(access) : null;
+  if (lockReason) {
+    return <LockedFeature featureName="Casos y Trámites" reason={lockReason} />;
   }
 
   return (

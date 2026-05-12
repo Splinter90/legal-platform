@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, DollarSign, Percent, CreditCard, Lock, User } from "lucide-react";
+import { Save, DollarSign, Percent, CreditCard, Lock, User, ShieldCheck, ShieldAlert } from "lucide-react";
+import { TwoFactorPanel } from "./TwoFactorPanel";
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState({
@@ -191,6 +192,8 @@ export default function AdminSettings() {
             </form>
           </CardContent>
         </Card>
+
+        <TwoFactorPanel />
 
         {/* Credenciales */}
         <Card>

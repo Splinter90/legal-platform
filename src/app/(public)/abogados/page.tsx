@@ -67,7 +67,6 @@ export default function PublicLawyersPage() {
       return;
     }
     fetchLawyers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [specialty, province, isAuth]);
 
   async function fetchLawyers() {
@@ -90,6 +89,28 @@ export default function PublicLawyersPage() {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: "Abogados verificados en Argentina",
+            description:
+              "Listado de abogados matriculados disponibles para consulta legal online.",
+            inLanguage: "es-AR",
+            isPartOf: {
+              "@type": "WebSite",
+              name: "Leges Digital",
+            },
+            about: {
+              "@type": "LegalService",
+              name: "Leges Digital",
+              areaServed: "AR",
+            },
+          }),
+        }}
+      />
       {/* Hero */}
       <section className="relative pt-20 pb-16 sm:pt-28 sm:pb-20 overflow-hidden bg-gradient-hero">
         <div className="absolute inset-0 hero-rays opacity-60" />
@@ -326,7 +347,7 @@ export default function PublicLawyersPage() {
                         )}
 
                         <Link
-                          href={`/client/lawyers/${lawyer.id}`}
+                          href={`/abogados/${lawyer.id}`}
                           className="mt-5 flex items-center justify-center gap-2 w-full py-3 rounded-full bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold hover:from-brand-400 hover:to-brand-500 shadow-glow-brand hover:shadow-[0_15px_40px_-10px_rgba(20,184,166,0.6)] hover:-translate-y-0.5 transition-all"
                         >
                           Ver perfil y agendar

@@ -131,6 +131,174 @@ export async function sendSubscriptionActivated(
   });
 }
 
+export async function sendLawyerStatusUpdate(
+  lawyerEmail: string,
+  lawyerName: string,
+  status: "approved" | "rejected" | "suspended",
+  rejectionReason?: string | null
+) {
+  if (status === "approved") {
+    return sendEmail({
+      to: lawyerEmail,
+      subject: "Tu perfil fue aprobado - LegalConnect",
+      body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+        <p>Tu perfil profesional fue <strong style="color:#059669">aprobado</strong>. Ya podes activar tu suscripcion mensual y empezar a recibir clientes a traves de la plataforma.</p>
+        <p><a href="${process.env.NEXTAUTH_URL}/lawyer/dashboard" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Activar suscripcion</a></p>`,
+    });
+  }
+
+  if (status === "rejected") {
+    const reasonBlock = rejectionReason
+      ? `<p style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;margin:16px 0;border-radius:6px"><strong>Motivo:</strong> ${rejectionReason}</p>`
+      : "";
+    return sendEmail({
+      to: lawyerEmail,
+      subject: "Tu solicitud fue rechazada - LegalConnect",
+      body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+        <p>Tu solicitud fue <strong style="color:#dc2626">rechazada</strong>.</p>
+        ${reasonBlock}
+        <p>Podes corregir tus datos y reenviar la solicitud desde tu panel.</p>
+        <p><a href="${process.env.NEXTAUTH_URL}/lawyer/dashboard" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Revisar mi perfil</a></p>`,
+    });
+  }
+
+  if (status === "suspended") {
+    return sendEmail({
+      to: lawyerEmail,
+      subject: "Tu perfil fue suspendido - LegalConnect",
+      body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+        <p>Tu perfil fue <strong style="color:#d97706">suspendido</strong> temporalmente. Durante la suspension no vas a aparecer en busquedas ni recibir nuevas consultas.</p>
+        <p>Para mas informacion contactanos respondiendo este email.</p>`,
+    });
+  }
+
+  return false;
+}
+
+export async function sendSubscriptionExpired(
+  lawyerEmail: string,
+  lawyerName: string
+) {
+  return sendEmail({
+    to: lawyerEmail,
+    subject: "Tu suscripcion vencio - LegalConnect",
+    body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+      <p>Tu suscripcion mensual <strong style="color:#dc2626">vencio</strong>. Mientras no la renueves no vas a aparecer en busquedas ni en el mapa, y los clientes no podran reservar consultas con vos.</p>
+      <p>Renovala desde el dashboard para volver a estar visible.</p>
+      <p><a href="${process.env.NEXTAUTH_URL}/lawyer/dashboard" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Renovar suscripcion</a></p>`,
+  });
+}
+
+export async function sendSubscriptionExpiringSoon(
+  lawyerEmail: string,
+  lawyerName: string,
+  paidUntilStr: string,
+  daysLeft: number
+) {
+  return sendEmail({
+    to: lawyerEmail,
+    subject: `Tu suscripcion vence en ${daysLeft} dia${daysLeft === 1 ? "" : "s"}`,
+    body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+      <p>Tu suscripcion mensual <strong style="color:#d97706">vence el ${paidUntilStr}</strong> (en ${daysLeft} dia${daysLeft === 1 ? "" : "s"}).</p>
+      <p>Renovala antes para no perder visibilidad en la plataforma.</p>
+      <p><a href="${process.env.NEXTAUTH_URL}/lawyer/dashboard" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Renovar ahora</a></p>`,
+  });
+}
+
+export async function sendAppointmentReminderToClient(
+  clientEmail: string,
+  clientName: string,
+  lawyerFullName: string,
+  dateStr: string,
+  meetLink?: string | null
+) {
+  const meetSection = meetLink
+    ? `<p>Link de Google Meet: <a href="${meetLink}">${meetLink}</a></p>`
+    : "";
+  return sendEmail({
+    to: clientEmail,
+    subject: "Recordatorio: tu consulta es manana",
+    body: `<p>Hola <strong>${clientName}</strong>,</p>
+      <p>Te recordamos que tenes una consulta con <strong>${lawyerFullName}</strong> el <strong>${dateStr}</strong>.</p>
+      ${meetSection}
+      <p>Asegurate de tener buena conexion y los documentos relevantes a mano.</p>
+      <p><a href="${process.env.NEXTAUTH_URL}/client/appointments" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Ver mis citas</a></p>`,
+  });
+}
+
+export async function sendAppointmentReminderToLawyer(
+  lawyerEmail: string,
+  lawyerName: string,
+  clientName: string,
+  dateStr: string,
+  meetLink?: string | null
+) {
+  const meetSection = meetLink
+    ? `<p>Link de Google Meet: <a href="${meetLink}">${meetLink}</a></p>`
+    : "";
+  return sendEmail({
+    to: lawyerEmail,
+    subject: "Recordatorio: consulta manana",
+    body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+      <p>Manana tenes una consulta con <strong>${clientName}</strong> el <strong>${dateStr}</strong>.</p>
+      ${meetSection}
+      <p><a href="${process.env.NEXTAUTH_URL}/lawyer/appointments" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Ver mis citas</a></p>`,
+  });
+}
+
+export async function sendAppointmentRefundedToClient(
+  clientEmail: string,
+  clientName: string,
+  lawyerFullName: string,
+  dateStr: string,
+  amount: number,
+  refundOk: boolean
+) {
+  const amountStr = amount.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  });
+  const refundBlock = refundOk
+    ? `<p>Te <strong>reembolsamos ${amountStr}</strong> a tu medio de pago. Puede demorar entre 1 y 10 dias habiles en aparecer segun tu banco o tarjeta.</p>`
+    : `<p>El reembolso de <strong>${amountStr}</strong> quedo pendiente y lo vamos a procesar manualmente. Te contactamos a la brevedad si necesitamos algun dato.</p>`;
+  return sendEmail({
+    to: clientEmail,
+    subject: "Tu consulta fue cancelada - LegalConnect",
+    body: `<p>Hola <strong>${clientName}</strong>,</p>
+      <p>Tu consulta con <strong>${lawyerFullName}</strong> del <strong>${dateStr}</strong> fue cancelada por el abogado.</p>
+      ${refundBlock}
+      <p><a href="${process.env.NEXTAUTH_URL}/client/lawyers" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Buscar otro abogado</a></p>`,
+  });
+}
+
+export async function sendAppointmentCancelledByClientToLawyer(
+  lawyerEmail: string,
+  lawyerName: string,
+  clientName: string,
+  dateStr: string,
+  amount: number,
+  refundOk: boolean
+) {
+  const amountStr = amount.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  });
+  const refundBlock = refundOk
+    ? `<p>Se le reembolsaron <strong>${amountStr}</strong> al cliente.</p>`
+    : `<p>El reembolso de <strong>${amountStr}</strong> al cliente quedo <strong style="color:#d97706">pendiente</strong> y lo vamos a procesar manualmente.</p>`;
+  return sendEmail({
+    to: lawyerEmail,
+    subject: "Una cita fue cancelada por el cliente - LegalConnect",
+    body: `<p>Hola <strong>${lawyerName}</strong>,</p>
+      <p><strong>${clientName}</strong> cancelo la consulta que tenian agendada para el <strong>${dateStr}</strong>.</p>
+      ${refundBlock}
+      <p>El espacio en tu agenda quedo liberado.</p>
+      <p><a href="${process.env.NEXTAUTH_URL}/lawyer/appointments" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Ver mis citas</a></p>`,
+  });
+}
+
 export async function sendMeetLinkToClient(
   clientEmail: string,
   clientName: string,

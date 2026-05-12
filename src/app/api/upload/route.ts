@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { v2 as cloudinary } from "cloudinary";
 import { sanitizeFolderName } from "@/lib/validations";
 
+const PUBLIC_UPLOAD_FOLDERS = new Set(["lawyer-applications"]);
+const AUTHENTICATED_UPLOAD_FOLDERS = new Set(["lawyers", "general"]);
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -12,15 +15,22 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const rawFolder = (formData.get("folder") as string) || "general";
     const folder = sanitizeFolderName(rawFolder);
+
+    if (!folder) {
+      return NextResponse.json({ error: "Carpeta de destino invalida" }, { status: 400 });
+    }
+
+    const session = await getServerSession(authOptions);
+    const isPublicApplicationUpload = PUBLIC_UPLOAD_FOLDERS.has(folder);
+    const isAuthenticatedUpload = AUTHENTICATED_UPLOAD_FOLDERS.has(folder);
+
+    if (!isPublicApplicationUpload && (!session || !isAuthenticatedUpload)) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
     if (!file) {
       return NextResponse.json({ error: "No se envió archivo" }, { status: 400 });

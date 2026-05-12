@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Send, ArrowLeft } from "lucide-react";
+import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
 
 interface Message {
   id: string;
@@ -35,9 +36,18 @@ export default function LawyerMessages() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [access, setAccess] = useState<any>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
-    fetchConversations();
+    fetch("/api/lawyers/me")
+      .then((r) => r.json())
+      .then((data) => {
+        setAccess(data.access);
+        setAccessChecked(true);
+        if (data.access?.canAccessFeatures) fetchConversations();
+        else setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -114,12 +124,17 @@ export default function LawyerMessages() {
     fetchMessages(selectedClient, false);
   }
 
-  if (loading && !selectedClient) {
+  if (!accessChecked || (loading && !selectedClient)) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
       </div>
     );
+  }
+
+  const lockReason = access ? deriveLockReason(access) : null;
+  if (lockReason) {
+    return <LockedFeature featureName="Mensajes" reason={lockReason} />;
   }
 
   return (

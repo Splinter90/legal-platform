@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireLawyerFeatureAccess } from "@/lib/lawyer-access";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -12,6 +14,13 @@ export async function GET(req: NextRequest) {
 
   if (role !== "lawyer" && role !== "client") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  if (role === "lawyer") {
+    const access = await requireLawyerFeatureAccess(userId);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
   }
 
   const otherUserId = req.nextUrl.searchParams.get("userId");
@@ -54,6 +63,20 @@ export async function POST(req: NextRequest) {
 
   if (role !== "lawyer" && role !== "client") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const rl = rateLimit({
+    key: `messages:${role}:${userId}`,
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) return rateLimitResponse(rl);
+
+  if (role === "lawyer") {
+    const access = await requireLawyerFeatureAccess(userId);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
   }
 
   const { content, recipientId } = await req.json();

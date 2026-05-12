@@ -33,6 +33,7 @@ interface LawyerProfile {
   experience: string;
   rating: number;
   reviewCount: number;
+  profilePhoto: string | null;
 }
 
 interface Review {
@@ -188,10 +189,18 @@ export default function LawyerProfilePage() {
       <Card className="mb-6">
         <CardContent className="py-8">
           <div className="flex flex-col sm:flex-row items-start gap-6">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
-              {lawyer.firstName[0]}
-              {lawyer.lastName[0]}
-            </div>
+            {lawyer.profilePhoto ? (
+              <img
+                src={lawyer.profilePhoto}
+                alt={`${lawyer.firstName} ${lawyer.lastName}`}
+                className="w-20 h-20 rounded-2xl object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
+                {lawyer.firstName[0]}
+                {lawyer.lastName[0]}
+              </div>
+            )}
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-slate-900">
                 {lawyer.firstName} {lawyer.lastName}

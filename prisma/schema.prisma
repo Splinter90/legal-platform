@@ -15,6 +15,8 @@ model Admin {
   consultationFee   Float  @default(5000)
   subscriptionFee   Float  @default(5000)
   commissionPercent Float  @default(10)
+  totpSecret    String?
+  totpEnabled   Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -43,6 +45,7 @@ model Lawyer {
   rating          Float    @default(0)
   reviewCount     Int      @default(0)
   status          String   @default("incomplete")
+  rejectionReason String?
   subscriptionStatus String @default("pending")
   subscriptionPaidUntil DateTime?
   consultationDuration Int @default(60)
@@ -166,15 +169,19 @@ model Message {
 }
 
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  userType    String
-  type        String
-  title       String
-  message     String
-  link        String?
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  userType      String
+  type          String
+  title         String
+  message       String
+  link          String?
+  appointmentId String?
+  read          Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([userId, userType, read])
+  @@index([type, appointmentId])
 }
 
 model Payment {

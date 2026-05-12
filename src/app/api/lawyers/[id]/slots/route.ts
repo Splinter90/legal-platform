@@ -44,7 +44,7 @@ export async function GET(
       });
     }
 
-    const startDate = dateParam ? new Date(dateParam) : new Date();
+    const startDate = dateParam ? new Date(`${dateParam}T00:00:00`) : new Date();
     const days = Math.min(Number(daysParam) || 14, 30);
 
     const now = new Date();
@@ -140,8 +140,12 @@ export async function GET(
               const endHH = String(slotEnd.getHours()).padStart(2, "0");
               const endMM = String(slotEnd.getMinutes()).padStart(2, "0");
 
+              const yyyy = currentDate.getFullYear();
+              const mm = String(currentDate.getMonth() + 1).padStart(2, "0");
+              const dd = String(currentDate.getDate()).padStart(2, "0");
+
               allSlots.push({
-                date: currentDate.toISOString().split("T")[0],
+                date: `${yyyy}-${mm}-${dd}`,
                 dayOfWeek: dow,
                 startTime: `${slotHH}:${slotMM}`,
                 endTime: `${endHH}:${endMM}`,

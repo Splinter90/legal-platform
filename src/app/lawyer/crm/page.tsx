@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
+import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
 import {
   Plus,
   Search,
@@ -61,16 +62,25 @@ export default function LawyerCRM() {
   const [editing, setEditing] = useState<CrmClient | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
+  const [access, setAccess] = useState<any>(null);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
-    fetchClients();
+    fetch("/api/lawyers/me")
+      .then((r) => r.json())
+      .then((data) => {
+        setAccess(data.access);
+        setAccessChecked(true);
+        if (data.access?.canAccessFeatures) fetchClients();
+        else setLoading(false);
+      });
   }, []);
 
   async function fetchClients() {
     setLoading(true);
     const res = await fetch("/api/lawyers/crm");
     const data = await res.json();
-    setClients(data);
+    setClients(Array.isArray(data) ? data : []);
     setLoading(false);
   }
 
@@ -153,6 +163,19 @@ export default function LawyerCRM() {
       <Badge variant="default">Externo</Badge>
     );
   };
+
+  if (!accessChecked) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
+      </div>
+    );
+  }
+
+  const lockReason = access ? deriveLockReason(access) : null;
+  if (lockReason) {
+    return <LockedFeature featureName="CRM Clientes" reason={lockReason} />;
+  }
 
   return (
     <div className="animate-in">

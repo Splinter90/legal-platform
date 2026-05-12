@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Stars } from "@/components/ui/stars";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import {
+  CLIENT_CANCELLATION_CUTOFF_HOURS,
+  canClientCancel,
+} from "@/lib/appointment-policy";
 import Link from "next/link";
 import {
   Calendar,
@@ -18,6 +22,7 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
+  XCircle,
 } from "lucide-react";
 
 interface Appointment {
@@ -50,6 +55,9 @@ export default function ClientAppointments() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/appointments")
@@ -59,6 +67,26 @@ export default function ClientAppointments() {
         setLoading(false);
       });
   }, []);
+
+  async function cancelAppointment(id: string) {
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const res = await fetch(`/api/appointments/${id}/cancel`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCancelError(data?.error || "No se pudo cancelar");
+        return;
+      }
+      setCancelTarget(null);
+      const refreshed = await fetch("/api/appointments");
+      setAppointments(await refreshed.json());
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   async function submitReview(appointmentId: string, lawyerId: string) {
     setSubmittingReview(true);
@@ -254,6 +282,18 @@ export default function ClientAppointments() {
                           <Star className="w-4 h-4 text-amber-500" />
                         </button>
                       )}
+                      {canClientCancel(apt).ok && (
+                        <button
+                          onClick={() => {
+                            setCancelTarget(apt);
+                            setCancelError(null);
+                          }}
+                          className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+                          title="Cancelar cita"
+                        >
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -269,6 +309,59 @@ export default function ClientAppointments() {
           ))}
         </div>
       )}
+
+      <Modal
+        isOpen={!!cancelTarget}
+        onClose={() => !cancelling && setCancelTarget(null)}
+        title="Cancelar cita"
+      >
+        {cancelTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Vas a cancelar tu consulta con{" "}
+              <span className="font-semibold">
+                {cancelTarget.lawyer.firstName} {cancelTarget.lawyer.lastName}
+              </span>{" "}
+              del{" "}
+              <span className="font-semibold">
+                {formatDateTime(cancelTarget.dateTime)}
+              </span>
+              .
+            </p>
+            {cancelTarget.status === "confirmed" &&
+              cancelTarget.paymentStatus === "completed" && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                  Te vamos a reembolsar {formatCurrency(cancelTarget.amount)} al
+                  medio de pago que usaste. Puede demorar entre 1 y 10 dias
+                  habiles segun tu banco.
+                </div>
+              )}
+            {cancelError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {cancelError}
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelling}
+              >
+                Volver
+              </Button>
+              <Button
+                variant="danger"
+                className="flex-1"
+                onClick={() => cancelAppointment(cancelTarget.id)}
+                disabled={cancelling}
+              >
+                {cancelling ? "Cancelando..." : "Confirmar cancelacion"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={!!reviewModal}

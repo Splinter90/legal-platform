@@ -1,78 +1,13 @@
 "use client";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/ui/brand-logo";
 
 export default function RegisterClientPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    phone: "",
-  });
-
-  function updateForm(field: string, value: string) {
-    setForm({ ...form, [field]: value });
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-
-    if (form.password !== form.confirmPassword) {
-      setError("Las contraseñas no coinciden");
-      return;
-    }
-
-    if (form.password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/clients/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: form.password,
-          phone: form.phone,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al registrar");
-      }
-
-      const loginRes = await signIn("client-login", {
-        email: form.email,
-        password: form.password,
-        redirect: false,
-      });
-
-      if (loginRes?.ok) {
-        router.push("/client/dashboard");
-      } else {
-        router.push("/login");
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleGoogleSignup() {
     setLoading(true);
@@ -104,24 +39,17 @@ export default function RegisterClientPage() {
                 Crear Cuenta
               </h1>
               <p className="text-slate-300 text-sm mt-1">
-                Registrate para agendar consultas legales.
+                Registrate con tu cuenta de Gmail para agendar consultas legales.
               </p>
             </div>
           </div>
 
           <div className="px-8 py-8">
-            {error && (
-              <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 text-red-700 text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Google signup */}
             <Button
               onClick={handleGoogleSignup}
               variant="outline"
               size="lg"
-              className="w-full gap-3 mb-6"
+              className="w-full gap-3"
               disabled={loading}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -142,68 +70,13 @@ export default function RegisterClientPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Registrarse con Google
+              Registrarme con Google
             </Button>
 
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-slate-500">o con email</span>
-              </div>
-            </div>
-
-            {/* Email form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label="Nombre completo"
-                value={form.name}
-                onChange={(e) => updateForm("name", e.target.value)}
-                placeholder="Tu nombre"
-                required
-              />
-              <Input
-                label="Email"
-                type="email"
-                value={form.email}
-                onChange={(e) => updateForm("email", e.target.value)}
-                placeholder="tu@email.com"
-                required
-              />
-              <Input
-                label="Telefono (opcional)"
-                type="tel"
-                value={form.phone}
-                onChange={(e) => updateForm("phone", e.target.value)}
-                placeholder="Tu telefono"
-              />
-              <Input
-                label="Contraseña"
-                type="password"
-                value={form.password}
-                onChange={(e) => updateForm("password", e.target.value)}
-                placeholder="Minimo 6 caracteres"
-                required
-              />
-              <Input
-                label="Confirmar contraseña"
-                type="password"
-                value={form.confirmPassword}
-                onChange={(e) => updateForm("confirmPassword", e.target.value)}
-                placeholder="Repetir contraseña"
-                required
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? "Creando cuenta..." : "Crear Cuenta"}
-              </Button>
-            </form>
+            <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed">
+              Para usar la plataforma necesitás una cuenta de Gmail. Tu perfil se crea
+              automáticamente al iniciar sesión.
+            </p>
 
             <p className="text-center text-sm text-slate-500 mt-6">
               Ya tenes cuenta?{" "}

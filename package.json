@@ -2,6 +2,9 @@
   "name": "legal-platform",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "npx prisma generate && next build",
@@ -10,7 +13,10 @@
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "npx prisma db push --force-reset && npx tsx prisma/seed.ts",
-    "db:generate": "npx prisma generate"
+    "db:generate": "npx prisma generate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smtp": "node --env-file=.env --import tsx scripts/test-smtp.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^1.6.0",
@@ -27,6 +33,7 @@
     "next": "13.5",
     "next-auth": "^4.24.14",
     "nodemailer": "^8.0.7",
+    "qrcode": "^1.5.4",
     "prisma": "^5.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -38,6 +45,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.5.0",
@@ -46,6 +54,8 @@
     "postcss": "^8.5.12",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^4.3.2",
+    "vitest": "^1.6.0"
   }
 }

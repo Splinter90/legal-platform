@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidLawyerStatus } from "@/lib/validations";
+import { canTransitionLawyerStatus } from "@/lib/lawyer-status-transitions";
+import { sendLawyerStatusUpdate } from "@/lib/email";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -40,7 +42,7 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { id, status } = body;
+  const { id, status, rejectionReason } = body;
 
   if (!id || !status) {
     return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
@@ -50,35 +52,46 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
   }
 
+  if (status === "rejected") {
+    if (typeof rejectionReason !== "string" || rejectionReason.trim().length < 5) {
+      return NextResponse.json(
+        { error: "El motivo de rechazo es obligatorio (mínimo 5 caracteres)" },
+        { status: 400 }
+      );
+    }
+  }
+
   const lawyer = await prisma.lawyer.findUnique({ where: { id } });
   if (!lawyer) {
     return NextResponse.json({ error: "Abogado no encontrado" }, { status: 404 });
   }
 
-  const validTransitions: Record<string, string[]> = {
-    pending: ["approved", "rejected"],
-    approved: ["suspended"],
-    rejected: ["pending"],
-    suspended: ["approved"],
-    incomplete: ["rejected"],
-  };
-
-  const allowed = validTransitions[lawyer.status];
-  if (!allowed || !allowed.includes(status)) {
+  if (!canTransitionLawyerStatus(lawyer.status, status)) {
     return NextResponse.json(
       { error: `No se puede cambiar de "${lawyer.status}" a "${status}"` },
       { status: 400 }
     );
   }
 
+  const updateData: { status: string; rejectionReason?: string | null } = { status };
+  if (status === "rejected") {
+    updateData.rejectionReason = rejectionReason.trim();
+  } else if (status === "approved" || status === "pending") {
+    updateData.rejectionReason = null;
+  }
+
   const updated = await prisma.lawyer.update({
     where: { id },
-    data: { status },
+    data: updateData,
   });
 
+  const rejectionMsg = status === "rejected" && updateData.rejectionReason
+    ? `Motivo: ${updateData.rejectionReason}. Corregí tus datos y reenviá la solicitud.`
+    : "Tu solicitud fue rechazada. Revisá tu información y volvé a intentar.";
+
   const statusMessages: Record<string, string> = {
-    approved: "Tu perfil fue aprobado. Ya podés recibir clientes.",
-    rejected: "Tu solicitud fue rechazada. Revisá tu información y volvé a intentar.",
+    approved: "Tu perfil fue aprobado. Ya podés activar tu suscripción.",
+    rejected: rejectionMsg,
     suspended: "Tu perfil fue suspendido temporalmente.",
   };
 
@@ -90,9 +103,18 @@ export async function PUT(req: NextRequest) {
         type: `profile_${status}`,
         title: `Perfil ${status === "approved" ? "aprobado" : status === "rejected" ? "rechazado" : "suspendido"}`,
         message: statusMessages[status],
-        link: "/lawyer/profile",
+        link: status === "rejected" ? "/lawyer/dashboard" : "/lawyer/profile",
       },
     });
+  }
+
+  if (status === "approved" || status === "rejected" || status === "suspended") {
+    sendLawyerStatusUpdate(
+      lawyer.email,
+      `${lawyer.firstName} ${lawyer.lastName}`.trim(),
+      status,
+      status === "rejected" ? updateData.rejectionReason : null
+    ).catch((err) => console.error("sendLawyerStatusUpdate error:", err));
   }
 
   return NextResponse.json(updated);

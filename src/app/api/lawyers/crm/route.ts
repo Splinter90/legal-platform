@@ -3,16 +3,27 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateRequired, isValidCrmStatus } from "@/lib/validations";
+import { requireLawyerFeatureAccess } from "@/lib/lawyer-access";
 
-export async function GET() {
+async function gateLawyer() {
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "lawyer") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    return { error: NextResponse.json({ error: "No autorizado" }, { status: 401 }) };
   }
+  const lawyerId = (session.user as any).id as string;
+  const access = await requireLawyerFeatureAccess(lawyerId);
+  if (!access.ok) {
+    return { error: NextResponse.json({ error: access.error }, { status: access.status }) };
+  }
+  return { lawyerId };
+}
 
-  const lawyerId = (session.user as any).id;
+export async function GET() {
+  const gate = await gateLawyer();
+  if (gate.error) return gate.error;
+
   const clients = await prisma.crmClient.findMany({
-    where: { lawyerId },
+    where: { lawyerId: gate.lawyerId },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -20,12 +31,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "lawyer") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const lawyerId = (session.user as any).id;
+  const gate = await gateLawyer();
+  if (gate.error) return gate.error;
+  const lawyerId = gate.lawyerId;
   const body = await req.json();
 
   const requiredError = validateRequired({ nombre: body.name });
@@ -57,12 +65,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "lawyer") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const lawyerId = (session.user as any).id;
+  const gate = await gateLawyer();
+  if (gate.error) return gate.error;
+  const lawyerId = gate.lawyerId;
   const body = await req.json();
   const { id, ...data } = body;
 
@@ -96,12 +101,9 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "lawyer") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const lawyerId = (session.user as any).id;
+  const gate = await gateLawyer();
+  if (gate.error) return gate.error;
+  const lawyerId = gate.lawyerId;
   const { id } = await req.json();
 
   if (!id) {

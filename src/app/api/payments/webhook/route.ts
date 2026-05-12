@@ -1,58 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getLawyerAccessToken, createCalendarEvent } from "@/lib/google-calendar";
-import crypto from "crypto";
+import { verifyMpWebhookSignature } from "@/lib/mp-webhook-signature";
 import {
   sendPaymentConfirmedToLawyer,
   sendPaymentConfirmedToClient,
   sendSubscriptionActivated,
 } from "@/lib/email";
 
-function verifyWebhookSignature(req: NextRequest, body: string): boolean {
-  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!secret) {
-    console.error("MERCADOPAGO_WEBHOOK_SECRET no configurado: webhook rechazado");
-    return false;
-  }
-
-  const xSignature = req.headers.get("x-signature");
-  const xRequestId = req.headers.get("x-request-id");
-
-  if (!xSignature || !xRequestId) return false;
-
-  const parts: Record<string, string> = {};
-  xSignature.split(",").forEach((part) => {
-    const [key, value] = part.trim().split("=");
-    if (key && value) parts[key] = value;
-  });
-
-  const ts = parts["ts"];
-  const hash = parts["v1"];
-  if (!ts || !hash) return false;
-
-  const dataId = JSON.parse(body)?.data?.id;
-  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
-  const computed = crypto
-    .createHmac("sha256", secret)
-    .update(manifest)
-    .digest("hex");
-
-  return computed === hash;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const bodyText = await req.text();
 
-    if (!verifyWebhookSignature(req, bodyText)) {
-      console.error("Webhook signature verification failed");
+    const verification = verifyMpWebhookSignature({
+      signatureHeader: req.headers.get("x-signature"),
+      requestId: req.headers.get("x-request-id"),
+      body: bodyText,
+      queryDataId: req.nextUrl.searchParams.get("data.id"),
+      queryId: req.nextUrl.searchParams.get("id"),
+      secret: process.env.MERCADOPAGO_WEBHOOK_SECRET,
+    });
+
+    if (!verification.ok) {
+      console.error("[mp-webhook] verification failed", {
+        reason: verification.reason,
+        url: req.nextUrl.toString(),
+        bodySnippet: bodyText.slice(0, 500),
+        ...(verification.debug ?? {}),
+      });
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const body = JSON.parse(bodyText);
+    const queryType = req.nextUrl.searchParams.get("type") || req.nextUrl.searchParams.get("topic");
+    const queryId = req.nextUrl.searchParams.get("data.id") || req.nextUrl.searchParams.get("id");
+    const eventType = body.type || body.topic || queryType;
+    const eventId = body.data?.id || body.id || queryId;
 
-    if (body.type === "payment" && body.data?.id) {
-      const mpPaymentId = String(body.data.id);
+    console.log("[mp-webhook] received", { eventType, eventId, action: body.action });
+
+    if (eventType !== "payment") {
+      console.log("[mp-webhook] ignoring non-payment event", { eventType });
+      return NextResponse.json({ received: true, ignored: eventType });
+    }
+
+    if (eventId) {
+      const mpPaymentId = String(eventId);
 
       const mpResponse = await fetch(
         `https://api.mercadopago.com/v1/payments/${mpPaymentId}`,
@@ -64,7 +57,12 @@ export async function POST(req: NextRequest) {
       );
 
       if (!mpResponse.ok) {
-        console.error("Failed to fetch payment from MP:", mpResponse.status);
+        const errBody = await mpResponse.text().catch(() => "");
+        console.error("[mp-webhook] Failed to fetch payment from MP", {
+          status: mpResponse.status,
+          mpPaymentId,
+          errBody: errBody.slice(0, 300),
+        });
         return NextResponse.json({ error: "Payment not found in MP" }, { status: 404 });
       }
 

@@ -13,6 +13,8 @@ import {
   Phone,
   Mail,
   Briefcase,
+  Download,
+  FileText,
 } from "lucide-react";
 
 interface Lawyer {
@@ -32,6 +34,8 @@ interface Lawyer {
   rating: number;
   reviewCount: number;
   subscriptionStatus: string;
+  profilePhoto: string | null;
+  titleDocument: string | null;
   createdAt: string;
   _count: {
     appointments: number;
@@ -40,11 +44,44 @@ interface Lawyer {
   };
 }
 
+function LawyerAvatar({
+  lawyer,
+  size,
+}: {
+  lawyer: Pick<Lawyer, "profilePhoto" | "firstName" | "lastName">;
+  size: "sm" | "lg";
+}) {
+  const cls =
+    size === "sm"
+      ? "w-12 h-12 text-lg"
+      : "w-16 h-16 text-xl";
+  if (lawyer.profilePhoto) {
+    return (
+      <img
+        src={lawyer.profilePhoto}
+        alt={`${lawyer.firstName} ${lawyer.lastName}`}
+        className={`${cls} rounded-full object-cover border border-slate-200`}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${cls} rounded-full bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold`}
+    >
+      {lawyer.firstName[0]}
+      {lawyer.lastName[0]}
+    </div>
+  );
+}
+
 export default function AdminLawyers() {
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<Lawyer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rejecting, setRejecting] = useState<Lawyer | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [submittingRejection, setSubmittingRejection] = useState(false);
 
   useEffect(() => {
     fetchLawyers();
@@ -60,13 +97,54 @@ export default function AdminLawyers() {
   }
 
   async function updateStatus(id: string, status: string) {
-    await fetch("/api/admin/lawyers", {
+    if (status === "rejected") {
+      const target = lawyers.find((l) => l.id === id) || selected;
+      if (target) {
+        setRejecting(target);
+        setRejectionReason("");
+      }
+      return;
+    }
+    const res = await fetch("/api/admin/lawyers", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Error al actualizar");
+      return;
+    }
     fetchLawyers();
     setSelected(null);
+  }
+
+  async function confirmRejection() {
+    if (!rejecting) return;
+    if (rejectionReason.trim().length < 5) {
+      alert("El motivo debe tener al menos 5 caracteres");
+      return;
+    }
+    setSubmittingRejection(true);
+    const res = await fetch("/api/admin/lawyers", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: rejecting.id,
+        status: "rejected",
+        rejectionReason: rejectionReason.trim(),
+      }),
+    });
+    setSubmittingRejection(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Error al rechazar");
+      return;
+    }
+    setRejecting(null);
+    setRejectionReason("");
+    setSelected(null);
+    fetchLawyers();
   }
 
   const statusBadge = (status: string) => {
@@ -135,10 +213,7 @@ export default function AdminLawyers() {
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold text-lg">
-                      {lawyer.firstName[0]}
-                      {lawyer.lastName[0]}
-                    </div>
+                    <LawyerAvatar lawyer={lawyer} size="sm" />
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-slate-900">
@@ -224,10 +299,7 @@ export default function AdminLawyers() {
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold text-xl">
-                {selected.firstName[0]}
-                {selected.lastName[0]}
-              </div>
+              <LawyerAvatar lawyer={selected} size="lg" />
               <div>
                 <h3 className="text-xl font-bold text-slate-900">
                   {selected.firstName} {selected.lastName}
@@ -278,6 +350,52 @@ export default function AdminLawyers() {
                   </Badge>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                Título universitario
+              </h4>
+              {selected.titleDocument ? (
+                <div className="flex items-start gap-3">
+                  <a
+                    href={selected.titleDocument}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-32 h-32 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-90 transition-opacity"
+                    title="Click para ver en grande"
+                  >
+                    <img
+                      src={selected.titleDocument}
+                      alt="Título universitario"
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={selected.titleDocument}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Ver en tamaño completo
+                    </a>
+                    <a
+                      href={selected.titleDocument}
+                      download={`titulo-${selected.firstName}-${selected.lastName}.jpg`}
+                      className="inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 font-medium"
+                    >
+                      <Download className="w-4 h-4" />
+                      Descargar
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 bg-slate-50 rounded-xl px-4 py-2">
+                  No se subió título.
+                </p>
+              )}
             </div>
 
             {selected.narrative && (
@@ -361,6 +479,61 @@ export default function AdminLawyers() {
                 </Button>
               </div>
             )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!rejecting}
+        onClose={() => {
+          if (!submittingRejection) {
+            setRejecting(null);
+            setRejectionReason("");
+          }
+        }}
+        title="Rechazar solicitud"
+        className="max-w-md"
+      >
+        {rejecting && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Vas a rechazar a <strong>{rejecting.firstName} {rejecting.lastName}</strong>. El motivo se le mostrará en su dashboard para que pueda corregirlo y reenviar la solicitud.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Motivo del rechazo
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[100px] resize-none"
+                placeholder="Ej: La foto del título no es legible. Subí una imagen más clara."
+                disabled={submittingRejection}
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setRejecting(null);
+                  setRejectionReason("");
+                }}
+                disabled={submittingRejection}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                className="flex-1"
+                onClick={confirmRejection}
+                disabled={submittingRejection || rejectionReason.trim().length < 5}
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                {submittingRejection ? "Enviando..." : "Rechazar"}
+              </Button>
+            </div>
           </div>
         )}
       </Modal>

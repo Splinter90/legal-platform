@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { deriveAccess } from "@/lib/lawyer-access";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -26,6 +27,7 @@ export async function GET() {
           province: true,
           city: true,
           status: true,
+          rejectionReason: true,
           rating: true,
           reviewCount: true,
           subscriptionStatus: true,
@@ -61,8 +63,11 @@ export async function GET() {
     return NextResponse.json({ error: "Abogado no encontrado" }, { status: 404 });
   }
 
+  const access = deriveAccess(lawyer);
+
   return NextResponse.json({
     lawyer,
+    access,
     appointments,
     crmClientsCount,
     reviews,

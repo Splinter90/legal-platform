@@ -39,6 +39,7 @@
   "exclude": [
     "node_modules",
     "prisma/seed.ts",
-    "prisma/seed-lawyers.ts"
+    "prisma/seed-lawyers.ts",
+    "tests/**/*"
   ]
 }

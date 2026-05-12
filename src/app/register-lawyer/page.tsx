@@ -1,7 +1,7 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Upload, CheckCircle, Camera, FileText, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ function FileUpload({
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("folder", "lawyers");
+    formData.append("folder", "lawyer-applications");
 
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
@@ -94,17 +94,21 @@ function FileUpload({
 
 export default function RegisterLawyerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  const prefilledEmail = searchParams.get("email") || "";
+  const prefilledFirstName = searchParams.get("firstName") || "";
+  const prefilledLastName = searchParams.get("lastName") || "";
+
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
+    firstName: prefilledFirstName,
+    lastName: prefilledLastName,
+    email: prefilledEmail,
     phone: "",
     matricula: "",
     specialties: [] as string[],
@@ -117,6 +121,15 @@ export default function RegisterLawyerPage() {
     profilePhoto: "",
     titleDocument: "",
   });
+
+  useEffect(() => {
+    setForm((f) => ({
+      ...f,
+      email: f.email || prefilledEmail,
+      firstName: f.firstName || prefilledFirstName,
+      lastName: f.lastName || prefilledLastName,
+    }));
+  }, [prefilledEmail, prefilledFirstName, prefilledLastName]);
 
   function updateForm(field: string, value: string | string[]) {
     setForm({ ...form, [field]: value });
@@ -283,19 +296,19 @@ export default function RegisterLawyerPage() {
                   />
                 </div>
                 <Input
-                  label="Email"
+                  label="Email (Gmail)"
                   type="email"
                   value={form.email}
                   onChange={(e) => updateForm("email", e.target.value)}
+                  placeholder="tu@gmail.com"
                   required
+                  disabled={!!prefilledEmail}
                 />
-                <Input
-                  label="Contrasena"
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => updateForm("password", e.target.value)}
-                  required
-                />
+                <p className="-mt-2 text-xs text-slate-500">
+                  {prefilledEmail
+                    ? "Este es el Gmail con el que iniciaste sesión. No se puede cambiar."
+                    : "Usa el mismo Gmail con el que vas a iniciar sesión."}
+                </p>
                 <Input
                   label="Telefono"
                   type="tel"

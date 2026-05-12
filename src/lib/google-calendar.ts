@@ -106,6 +106,26 @@ export async function createCalendarEvent({
   };
 }
 
+export async function deleteCalendarEvent({
+  accessToken,
+  eventId,
+}: {
+  accessToken: string;
+  eventId: string;
+}): Promise<boolean> {
+  try {
+    const oauth2Client = getOAuth2Client();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+    await calendar.events.delete({ calendarId: "primary", eventId });
+    return true;
+  } catch (err: any) {
+    if (err?.code === 404 || err?.code === 410) return true;
+    console.error("[google-calendar] deleteEvent failed:", err?.message || err);
+    return false;
+  }
+}
+
 export async function getFreeBusy({
   accessToken,
   calendarId,

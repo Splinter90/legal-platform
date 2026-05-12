@@ -52,6 +52,46 @@ export async function createPaymentPreference({
   };
 }
 
+export async function refundMpPayment(
+  mpPaymentId: string,
+  amount?: number
+): Promise<{ ok: true; refundId: string; status: string; amount: number } | { ok: false; error: string; status: number }> {
+  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  if (!token) {
+    return { ok: false, error: "MP access token missing", status: 500 };
+  }
+
+  const response = await fetch(
+    `https://api.mercadopago.com/v1/payments/${mpPaymentId}/refunds`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": `refund-${mpPaymentId}-${amount ?? "full"}`,
+      },
+      body: JSON.stringify(amount ? { amount } : {}),
+    }
+  );
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: body?.message || `MP refund failed (${response.status})`,
+      status: response.status,
+    };
+  }
+
+  return {
+    ok: true,
+    refundId: String(body.id),
+    status: body.status || "approved",
+    amount: Number(body.amount ?? amount ?? 0),
+  };
+}
+
 export async function createSubscriptionPreference({
   lawyerId,
   lawyerEmail,

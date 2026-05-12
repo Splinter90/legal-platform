@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Stars } from "@/components/ui/stars";
 import { Reveal } from "@/components/ui/reveal";
+import { OnboardingStepper } from "@/components/lawyer/onboarding-stepper";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import {
   Calendar,
@@ -17,11 +18,15 @@ import {
 export default function LawyerDashboard() {
   const [data, setData] = useState<any>(null);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     fetch("/api/lawyers/dashboard")
       .then((r) => r.json())
       .then(setData);
   }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   if (!data) {
     return (
@@ -83,6 +88,8 @@ export default function LawyerDashboard() {
           Resumen de tu actividad profesional
         </p>
       </Reveal>
+
+      {data.access && <OnboardingStepper access={data.access} onChanged={reload} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
         {stats.map((stat, idx) => (

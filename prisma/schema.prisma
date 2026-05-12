@@ -15,6 +15,10 @@ model Admin {
   consultationFee   Float  @default(5000)
   subscriptionFee   Float  @default(5000)
   commissionPercent Float  @default(10)
+  mpAccreditationScheme String @default("immediate")
+  mpFeePercent      Float  @default(6.29)
+  mpFixedFee        Float  @default(4)
+  mpIvaPercent      Float  @default(21)
   totpSecret    String?
   totpEnabled   Boolean  @default(false)
   createdAt     DateTime @default(now())

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireLawyerFeatureAccess } from "@/lib/lawyer-access";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { canChat, CHAT_GATE_MESSAGE } from "@/lib/messaging";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -102,6 +103,11 @@ export async function POST(req: NextRequest) {
   } else {
     const lawyer = await prisma.lawyer.findUnique({ where: { id: recipientId } });
     if (!lawyer) return NextResponse.json({ error: "Destinatario no encontrado" }, { status: 404 });
+  }
+
+  const allowed = await canChat(lawyerId, clientId);
+  if (!allowed) {
+    return NextResponse.json({ error: CHAT_GATE_MESSAGE }, { status: 403 });
   }
 
   const message = await prisma.message.create({

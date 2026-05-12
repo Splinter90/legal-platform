@@ -65,5 +65,9 @@ export async function GET() {
     consultationFee: admin?.consultationFee || 0,
     subscriptionFee: admin?.subscriptionFee || 0,
     commissionPercent: admin?.commissionPercent || 0,
+    mpAccreditationScheme: admin?.mpAccreditationScheme || "immediate",
+    mpFeePercent: admin?.mpFeePercent ?? 6.29,
+    mpFixedFee: admin?.mpFixedFee ?? 4,
+    mpIvaPercent: admin?.mpIvaPercent ?? 21,
   });
 }

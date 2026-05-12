@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/modal";
 import {
   LayoutDashboard,
   Users,
@@ -71,6 +73,13 @@ export function Sidebar({ role, userName }: SidebarProps) {
   const pathname = usePathname();
   const items = menuItems[role];
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [signoutOpen, setSignoutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    await signOut({ callbackUrl: "/" });
+  };
 
   const initials = (userName || "U")
     .split(" ")
@@ -144,13 +153,17 @@ export function Sidebar({ role, userName }: SidebarProps) {
       </nav>
 
       <div className="px-3 py-4 border-t border-slate-100">
-        <Link
-          href="/api/auth/signout"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+        <button
+          type="button"
+          onClick={() => {
+            setMobileOpen(false);
+            setSignoutOpen(true);
+          }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
         >
           <LogOut className="w-5 h-5" />
           Cerrar Sesion
-        </Link>
+        </button>
       </div>
     </>
   );
@@ -193,6 +206,45 @@ export function Sidebar({ role, userName }: SidebarProps) {
       <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 flex-col z-40 hidden lg:flex">
         {sidebarContent}
       </aside>
+
+      {/* Signout confirmation modal */}
+      <Modal
+        isOpen={signoutOpen}
+        onClose={() => {
+          if (!signingOut) setSignoutOpen(false);
+        }}
+        title="Cerrar sesion"
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+              <LogOut className="w-5 h-5 text-red-600" />
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              ¿Seguro que querés cerrar sesión? Vas a tener que volver a iniciar sesión para acceder
+              a tu cuenta.
+            </p>
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setSignoutOpen(false)}
+              disabled={signingOut}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {signingOut ? "Cerrando..." : "Cerrar sesion"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

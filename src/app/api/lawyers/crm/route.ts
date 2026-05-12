@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateRequired, isValidCrmStatus } from "@/lib/validations";
+import { isOptionalPhoneARValid } from "@/lib/phone";
 import { requireLawyerFeatureAccess } from "@/lib/lawyer-access";
 
 async function gateLawyer() {
@@ -39,6 +40,13 @@ export async function POST(req: NextRequest) {
   const requiredError = validateRequired({ nombre: body.name });
   if (requiredError) {
     return NextResponse.json({ error: requiredError }, { status: 400 });
+  }
+
+  if (body.phone !== undefined && !isOptionalPhoneARValid(body.phone)) {
+    return NextResponse.json(
+      { error: "Formato de celular inválido. Usá +54 9 11 1234-5678." },
+      { status: 400 }
+    );
   }
 
   const status = body.status || "in_progress";
@@ -82,6 +90,13 @@ export async function PUT(req: NextRequest) {
 
   if (data.status && !isValidCrmStatus(data.status)) {
     return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+  }
+
+  if (data.phone !== undefined && !isOptionalPhoneARValid(data.phone)) {
+    return NextResponse.json(
+      { error: "Formato de celular inválido. Usá +54 9 11 1234-5678." },
+      { status: 400 }
+    );
   }
 
   const allowedFields = ["name", "phone", "email", "address", "situation", "caseType", "status", "notes"];

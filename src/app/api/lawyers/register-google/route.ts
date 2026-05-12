@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { geocodeAddress } from "@/lib/geocode";
+import { isOptionalPhoneARValid } from "@/lib/phone";
 
 export async function POST() {
   try {
@@ -96,7 +97,8 @@ export async function PUT(req: NextRequest) {
     const {
       firstName, lastName,
       phone, matricula, specialties, province, city,
-      address, narrative, experience, profilePhoto, titleDocument,
+      address, latitude, longitude,
+      narrative, experience, profilePhoto, titleDocument,
     } = body;
 
     if (!firstName || !lastName || !matricula || !specialties || !province || !city) {
@@ -106,7 +108,20 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const coords = await geocodeAddress(city.trim(), province.trim(), address);
+    if (phone !== undefined && !isOptionalPhoneARValid(phone)) {
+      return NextResponse.json(
+        { error: "Formato de celular inválido. Usá +54 9 11 1234-5678." },
+        { status: 400 }
+      );
+    }
+
+    let lat: number | null = typeof latitude === "number" ? latitude : null;
+    let lng: number | null = typeof longitude === "number" ? longitude : null;
+    if (lat === null || lng === null) {
+      const coords = await geocodeAddress(city.trim(), province.trim(), address);
+      lat = coords?.latitude ?? null;
+      lng = coords?.longitude ?? null;
+    }
 
     const updatedLawyer = await prisma.lawyer.update({
       where: { email: session.user.email },
@@ -123,8 +138,8 @@ export async function PUT(req: NextRequest) {
         experience: experience || null,
         profilePhoto: profilePhoto || lawyer.profilePhoto,
         titleDocument: titleDocument || null,
-        latitude: coords?.latitude ?? null,
-        longitude: coords?.longitude ?? null,
+        latitude: lat,
+        longitude: lng,
         status: "pending",
       },
     });

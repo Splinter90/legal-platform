@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Reveal } from "@/components/ui/reveal";
 import { formatCurrency } from "@/lib/utils";
+import { calculateMPBreakdown, type MPAccreditationScheme } from "@/lib/mp-fees";
 import {
   Scale,
   Users,
@@ -12,18 +14,30 @@ import {
   Clock,
   TrendingUp,
   ArrowRight,
+  CreditCard,
 } from "lucide-react";
 
 interface DashboardData {
   totalLawyers: number;
   pendingLawyers: number;
   approvedLawyers: number;
+  suspendedLawyers: number;
   totalClients: number;
   totalAppointments: number;
-  paidAppointments: number;
-  totalRevenue: number;
+  completedAppointments: number;
+  activeSubscriptions: number;
+  totalConsultationRevenue: number;
+  totalConsultationAmount: number;
+  totalConsultations: number;
+  totalSubscriptionRevenue: number;
+  totalSubscriptions: number;
   consultationFee: number;
+  subscriptionFee: number;
   commissionPercent: number;
+  mpAccreditationScheme: MPAccreditationScheme;
+  mpFeePercent: number;
+  mpFixedFee: number;
+  mpIvaPercent: number;
 }
 
 export default function AdminDashboard() {
@@ -35,6 +49,16 @@ export default function AdminDashboard() {
       .then(setData);
   }, []);
 
+  const breakdown = useMemo(() => {
+    if (!data) return null;
+    return calculateMPBreakdown(data.consultationFee, data.commissionPercent, {
+      scheme: data.mpAccreditationScheme,
+      feePercent: data.mpFeePercent,
+      fixedFee: data.mpFixedFee,
+      ivaPercent: data.mpIvaPercent,
+    });
+  }, [data]);
+
   if (!data) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -43,6 +67,9 @@ export default function AdminDashboard() {
     );
   }
 
+  const platformRevenue =
+    (data.totalConsultationRevenue || 0) + (data.totalSubscriptionRevenue || 0);
+
   const stats = [
     {
       label: "Abogados Activos",
@@ -50,6 +77,7 @@ export default function AdminDashboard() {
       icon: <Scale className="w-6 h-6" />,
       color: "text-brand-600",
       bg: "bg-brand-50",
+      href: "/admin/lawyers?status=approved",
     },
     {
       label: "Solicitudes Pendientes",
@@ -58,6 +86,7 @@ export default function AdminDashboard() {
       color: "text-amber-600",
       bg: "bg-amber-50",
       badge: data.pendingLawyers > 0 ? "warning" : undefined,
+      href: "/admin/lawyers?status=pending",
     },
     {
       label: "Clientes Registrados",
@@ -65,20 +94,23 @@ export default function AdminDashboard() {
       icon: <Users className="w-6 h-6" />,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
+      href: "/admin/clients",
     },
     {
       label: "Consultas Realizadas",
-      value: data.paidAppointments,
+      value: data.completedAppointments,
       icon: <Calendar className="w-6 h-6" />,
       color: "text-purple-600",
       bg: "bg-purple-50",
+      href: "/admin/payments?type=consultation",
     },
     {
       label: "Ingresos Plataforma",
-      value: formatCurrency(data.totalRevenue),
+      value: formatCurrency(platformRevenue),
       icon: <DollarSign className="w-6 h-6" />,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
+      href: "/admin/payments",
     },
     {
       label: "Total Abogados",
@@ -86,6 +118,7 @@ export default function AdminDashboard() {
       icon: <TrendingUp className="w-6 h-6" />,
       color: "text-brand-700",
       bg: "bg-brand-50",
+      href: "/admin/lawyers",
     },
   ];
 
@@ -107,24 +140,27 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
         {stats.map((stat, idx) => (
           <Reveal key={stat.label} delay={idx * 60}>
-            <Card className="h-full hover:border-brand-500/40">
-              <CardContent className="flex items-center gap-4 py-6">
-                <div className={`p-3 rounded-2xl ${stat.bg} flex-shrink-0`}>
-                  <div className={stat.color}>{stat.icon}</div>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-slate-500 truncate">{stat.label}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-2xl font-extrabold text-slate-900">
-                      {stat.value}
-                    </p>
-                    {stat.badge && (
-                      <Badge variant={stat.badge as any}>Pendientes</Badge>
-                    )}
+            <Link href={stat.href} className="block group h-full">
+              <Card className="h-full hover:border-brand-500/40 group-hover:shadow-md transition-all cursor-pointer">
+                <CardContent className="flex items-center gap-4 py-6">
+                  <div className={`p-3 rounded-2xl ${stat.bg} flex-shrink-0`}>
+                    <div className={stat.color}>{stat.icon}</div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-slate-500 truncate">{stat.label}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-2xl font-extrabold text-slate-900">
+                        {stat.value}
+                      </p>
+                      {stat.badge && (
+                        <Badge variant={stat.badge as any}>Pendientes</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-brand-600 group-hover:translate-x-1 transition-all" />
+                </CardContent>
+              </Card>
+            </Link>
           </Reveal>
         ))}
       </div>
@@ -137,28 +173,40 @@ export default function AdminDashboard() {
                 <DollarSign className="w-5 h-5 text-brand-600" />
                 Configuracion Actual
               </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-600">Monto de Consulta</span>
-                  <span className="font-semibold text-slate-900">
-                    {formatCurrency(data.consultationFee)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span className="text-slate-600">Comision Plataforma</span>
-                  <span className="font-semibold text-slate-900">
-                    {data.commissionPercent}%
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-slate-600">Ganancia por Consulta</span>
-                  <span className="font-bold text-emerald-600">
-                    {formatCurrency(
-                      data.consultationFee * (data.commissionPercent / 100)
-                    )}
-                  </span>
-                </div>
+              <div className="space-y-1">
+                <Row label="Monto de Consulta" value={formatCurrency(data.consultationFee)} />
+                <Row label="Comision Plataforma" value={`${data.commissionPercent}%`} />
+                {breakdown && (
+                  <>
+                    <Row
+                      label={`MP descuenta (${data.mpFeePercent}% + $${data.mpFixedFee} + IVA)`}
+                      value={`− ${formatCurrency(breakdown.mpTotalFee)}`}
+                      tone="negative"
+                    />
+                    <Row
+                      label="Llega al marketplace"
+                      value={formatCurrency(breakdown.marketplaceReceives)}
+                    />
+                    <Row
+                      label="Recibe el abogado"
+                      value={formatCurrency(breakdown.lawyerReceives)}
+                    />
+                    <Row
+                      label="Ganancia plataforma"
+                      value={formatCurrency(breakdown.platformCommission)}
+                      tone="positive"
+                      bold
+                    />
+                  </>
+                )}
               </div>
+              <p className="text-xs text-slate-400 mt-3">
+                Ajustá tarifas, comisión y tasas MP en{" "}
+                <Link href="/admin/settings" className="text-brand-600 font-medium hover:underline">
+                  Configuración
+                </Link>
+                .
+              </p>
             </CardContent>
           </Card>
         </Reveal>
@@ -171,7 +219,7 @@ export default function AdminDashboard() {
                 Acciones Rapidas
               </h3>
               <div className="space-y-2.5">
-                <a
+                <Link
                   href="/admin/lawyers"
                   className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-brand-50 transition-colors"
                 >
@@ -185,8 +233,18 @@ export default function AdminDashboard() {
                     </Badge>
                   )}
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand-600 group-hover:translate-x-1 transition-all ml-auto" />
-                </a>
-                <a
+                </Link>
+                <Link
+                  href="/admin/payments"
+                  className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-brand-50 transition-colors"
+                >
+                  <CreditCard className="w-5 h-5 text-emerald-600" />
+                  <span className="text-sm font-semibold text-slate-700">
+                    Ver Pagos
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand-600 group-hover:translate-x-1 transition-all ml-auto" />
+                </Link>
+                <Link
                   href="/admin/settings"
                   className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-brand-50 transition-colors"
                 >
@@ -195,8 +253,8 @@ export default function AdminDashboard() {
                     Configurar Tarifas
                   </span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand-600 group-hover:translate-x-1 transition-all ml-auto" />
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/admin/map"
                   className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-brand-50 transition-colors"
                 >
@@ -205,12 +263,39 @@ export default function AdminDashboard() {
                     Ver Mapa de Abogados
                   </span>
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand-600 group-hover:translate-x-1 transition-all ml-auto" />
-                </a>
+                </Link>
               </div>
             </CardContent>
           </Card>
         </Reveal>
       </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  bold,
+  tone,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  tone?: "positive" | "negative";
+}) {
+  const valueColor =
+    tone === "positive"
+      ? "text-emerald-700"
+      : tone === "negative"
+      ? "text-red-600"
+      : "text-slate-900";
+  return (
+    <div className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
+      <span className="text-sm text-slate-600">{label}</span>
+      <span className={`text-sm ${bold ? "font-bold" : "font-semibold"} ${valueColor}`}>
+        {value}
+      </span>
     </div>
   );
 }

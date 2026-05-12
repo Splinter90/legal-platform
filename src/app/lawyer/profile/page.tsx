@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Stars } from "@/components/ui/stars";
+import { PhoneInputAR } from "@/components/ui/phone-input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Save, MapPin, CreditCard, User, Crown, CheckCircle, AlertCircle } from "lucide-react";
 
 const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
@@ -54,13 +56,21 @@ export default function LawyerProfile() {
         experience: form.experience,
         address: form.address,
         cbuAlias: form.cbuAlias,
+        latitude: typeof form.latitude === "number" ? form.latitude : undefined,
+        longitude: typeof form.longitude === "number" ? form.longitude : undefined,
       }),
     });
-    if (res.ok) {
-      const updated = await res.json();
-      setLawyer(updated);
-      setForm(updated);
+    if (!res.ok) {
+      try {
+        const err = await res.json();
+        alert(err.error || "No se pudo guardar");
+      } catch {}
+      setSaving(false);
+      return;
     }
+    const updated = await res.json();
+    setLawyer(updated);
+    setForm(updated);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -268,15 +278,29 @@ export default function LawyerProfile() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="space-y-4">
-              <Input
-                label="Telefono"
+              <PhoneInputAR
+                label="Celular"
                 value={form.phone || ""}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onChange={(v) => setForm({ ...form, phone: v })}
+                showErrorOnIncomplete
               />
-              <Input
+              <AddressAutocomplete
                 label="Direccion"
                 value={form.address || ""}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                onChange={(v) => setForm({ ...form, address: v })}
+                onSelect={(opt) =>
+                  setForm({
+                    ...form,
+                    address: opt.address,
+                    city: opt.city || form.city,
+                    province: opt.province || form.province,
+                    latitude: opt.latitude,
+                    longitude: opt.longitude,
+                  })
+                }
+                province={form.province}
+                city={form.city}
+                helper="Empezá a escribir y elegí una sugerencia para fijar la ubicación exacta."
               />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">

@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
+import { PhoneInputAR } from "@/components/ui/phone-input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { isOptionalPhoneARValid } from "@/lib/phone";
 import {
   Plus,
   Search,
@@ -86,6 +89,10 @@ export default function LawyerCRM() {
 
   async function saveClient(e: React.FormEvent) {
     e.preventDefault();
+    if (form.phone && !isOptionalPhoneARValid(form.phone)) {
+      alert("Ingresá un celular válido (formato +54 9 11 1234-5678).");
+      return;
+    }
     if (editing) {
       await fetch("/api/lawyers/crm", {
         method: "PUT",
@@ -321,10 +328,11 @@ export default function LawyerCRM() {
             required
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Telefono"
+            <PhoneInputAR
+              label="Celular"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(v) => setForm({ ...form, phone: v })}
+              showErrorOnIncomplete
             />
             <Input
               label="Email"
@@ -333,10 +341,11 @@ export default function LawyerCRM() {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </div>
-          <Input
+          <AddressAutocomplete
             label="Direccion"
             value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            onChange={(v) => setForm({ ...form, address: v })}
+            onSelect={(opt) => setForm({ ...form, address: opt.address })}
           />
           <div className="grid grid-cols-2 gap-4">
             <div>

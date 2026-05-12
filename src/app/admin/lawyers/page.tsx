@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   Briefcase,
   Download,
   FileText,
+  Search,
 } from "lucide-react";
 
 interface Lawyer {
@@ -74,9 +76,17 @@ function LawyerAvatar({
   );
 }
 
+const VALID_STATUS_FILTERS = ["all", "pending", "approved", "rejected", "suspended", "incomplete"];
+
 export default function AdminLawyers() {
+  const searchParams = useSearchParams();
+  const initialStatus = (() => {
+    const s = searchParams.get("status");
+    return s && VALID_STATUS_FILTERS.includes(s) ? s : "all";
+  })();
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(initialStatus);
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Lawyer | null>(null);
   const [loading, setLoading] = useState(true);
   const [rejecting, setRejecting] = useState<Lawyer | null>(null);
@@ -179,36 +189,61 @@ export default function AdminLawyers() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-6">
-        {filters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              filter === f.key
-                ? "bg-brand-600 text-white shadow-lg shadow-glow-brand"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* Filters + search */}
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, email o matrícula..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                filter === f.key
+                  ? "bg-brand-600 text-white shadow-lg shadow-glow-brand"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
         </div>
-      ) : lawyers.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-slate-500">No se encontraron abogados</p>
-          </CardContent>
-        </Card>
-      ) : (
+      ) : (() => {
+        const q = search.trim().toLowerCase();
+        const visible = q
+          ? lawyers.filter(
+              (l) =>
+                `${l.firstName} ${l.lastName}`.toLowerCase().includes(q) ||
+                l.email.toLowerCase().includes(q) ||
+                (l.matricula || "").toLowerCase().includes(q)
+            )
+          : lawyers;
+        if (visible.length === 0) {
+          return (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-slate-500">No se encontraron abogados</p>
+              </CardContent>
+            </Card>
+          );
+        }
+        return (
         <div className="grid gap-4">
-          {lawyers.map((lawyer) => (
+          {visible.map((lawyer) => (
             <Card key={lawyer.id} className="hover:shadow-md transition-shadow">
               <CardContent className="py-4">
                 <div className="flex items-center justify-between">
@@ -287,7 +322,8 @@ export default function AdminLawyers() {
             </Card>
           ))}
         </div>
-      )}
+        );
+      })()}
 
       {/* Detail Modal */}
       <Modal

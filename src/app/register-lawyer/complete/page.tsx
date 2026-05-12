@@ -7,6 +7,9 @@ import { ArrowLeft, Upload, CheckCircle, Camera, FileText, X, Loader2, Sparkles 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { PhoneInputAR } from "@/components/ui/phone-input";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
+import { isOptionalPhoneARValid } from "@/lib/phone";
 
 const specialties = [
   "Derecho Penal", "Derecho Civil", "Derecho Laboral", "Derecho Comercial",
@@ -107,6 +110,8 @@ export default function CompleteLawyerProfilePage() {
     province: "",
     city: "",
     address: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
     narrative: "",
     experience: "",
     profilePhoto: "",
@@ -155,7 +160,7 @@ export default function CompleteLawyerProfilePage() {
     createLawyerRecord();
   }, [status, session, router]);
 
-  function updateForm(field: string, value: string | string[]) {
+  function updateForm(field: string, value: string | string[] | number | null) {
     setForm({ ...form, [field]: value });
   }
 
@@ -170,6 +175,10 @@ export default function CompleteLawyerProfilePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.phone && !isOptionalPhoneARValid(form.phone)) {
+      setError("Ingresá un celular válido (formato +54 9 11 1234-5678).");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -312,11 +321,11 @@ export default function CompleteLawyerProfilePage() {
                     required
                   />
                 </div>
-                <Input
-                  label="Telefono"
-                  type="tel"
+                <PhoneInputAR
+                  label="Celular"
                   value={form.phone}
-                  onChange={(e) => updateForm("phone", e.target.value)}
+                  onChange={(v) => updateForm("phone", v)}
+                  showErrorOnIncomplete
                 />
                 <Input
                   label="Numero de Matricula"
@@ -367,10 +376,23 @@ export default function CompleteLawyerProfilePage() {
                   onChange={(e) => updateForm("city", e.target.value)}
                   required
                 />
-                <Input
+                <AddressAutocomplete
                   label="Direccion"
                   value={form.address}
-                  onChange={(e) => updateForm("address", e.target.value)}
+                  onChange={(v) => updateForm("address", v)}
+                  onSelect={(opt) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: opt.address,
+                      city: opt.city || f.city,
+                      province: opt.province || f.province,
+                      latitude: opt.latitude,
+                      longitude: opt.longitude,
+                    }))
+                  }
+                  province={form.province}
+                  city={form.city}
+                  helper="Elegí una sugerencia para fijar tu ubicación en el mapa."
                 />
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">

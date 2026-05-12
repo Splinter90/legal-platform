@@ -1,5 +1,6 @@
-﻿"use client";
-import { useEffect, useState } from "react";
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -15,14 +16,21 @@ interface Payment {
   id: string;
   appointmentId: string | null;
   lawyerId: string | null;
+  lawyerName: string | null;
   clientId: string | null;
+  clientName: string | null;
+  senderName: string;
   type: string;
   amount: number;
   platformFee: number;
-  lawyerAmount: number;
   status: string;
   mpPaymentId: string | null;
   createdAt: string;
+}
+
+interface LawyerOpt {
+  id: string;
+  name: string;
 }
 
 interface Stats {
@@ -45,7 +53,9 @@ const typeMap: Record<string, string> = {
 };
 
 export default function AdminPayments() {
+  const searchParams = useSearchParams();
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [lawyers, setLawyers] = useState<LawyerOpt[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalRevenue: 0,
     totalConsultations: 0,
@@ -53,22 +63,42 @@ export default function AdminPayments() {
     totalPayments: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState<string>(searchParams.get("type") || "all");
+  const [lawyerFilter, setLawyerFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/payments")
       .then((r) => r.json())
       .then((data) => {
         setPayments(data.payments);
+        setLawyers(data.lawyers || []);
         setStats(data.stats);
         setLoading(false);
       });
   }, []);
 
-  const filtered =
-    filter === "all"
-      ? payments
-      : payments.filter((p) => p.status === filter);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return payments.filter((p) => {
+      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (typeFilter !== "all" && p.type !== typeFilter) return false;
+      if (lawyerFilter !== "all" && p.lawyerId !== lawyerFilter) return false;
+      if (q) {
+        const haystack = `${p.senderName} ${p.lawyerName || ""} ${p.clientName || ""} ${p.mpPaymentId || ""}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [payments, statusFilter, typeFilter, lawyerFilter, search]);
+
+  const lawyerSubtotal = useMemo(() => {
+    if (lawyerFilter === "all") return null;
+    return filtered
+      .filter((p) => p.status === "completed")
+      .reduce((sum, p) => sum + (p.platformFee || p.amount), 0);
+  }, [filtered, lawyerFilter]);
 
   if (loading) {
     return (
@@ -136,32 +166,83 @@ export default function AdminPayments() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {[
-          { key: "all", label: "Todos" },
-          { key: "completed", label: "Completados" },
-          { key: "pending", label: "Pendientes" },
-          { key: "failed", label: "Fallidos" },
-        ].map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              filter === f.key
-                ? "bg-brand-600 text-white"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-            }`}
+      {/* Filters */}
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o ID de MP..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+          <select
+            value={lawyerFilter}
+            onChange={(e) => setLawyerFilter(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            {f.label}
-          </button>
-        ))}
+            <option value="all">Todos los abogados</option>
+            {lawyers.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "all", label: "Todos" },
+            { key: "completed", label: "Completados" },
+            { key: "pending", label: "Pendientes" },
+            { key: "failed", label: "Fallidos" },
+          ].map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                statusFilter === f.key
+                  ? "bg-brand-600 text-white"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          <span className="mx-1 text-slate-300">|</span>
+          {[
+            { key: "all", label: "Todo tipo" },
+            { key: "consultation", label: "Consultas" },
+            { key: "subscription", label: "Suscripciones" },
+          ].map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setTypeFilter(f.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                typeFilter === f.key
+                  ? "bg-brand-600 text-white"
+                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {lawyerSubtotal !== null && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">
+            Ingresos plataforma del abogado seleccionado (pagos completados):{" "}
+            <strong>{formatCurrency(lawyerSubtotal)}</strong>
+          </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <CreditCard className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500">No hay pagos registrados</p>
+            <p className="text-slate-500">No hay pagos para los filtros seleccionados</p>
           </CardContent>
         </Card>
       ) : (
@@ -171,9 +252,10 @@ export default function AdminPayments() {
               <tr className="border-b border-slate-200">
                 <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Fecha</th>
                 <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Tipo</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Quien</th>
+                <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Abogado</th>
                 <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Monto</th>
                 <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Comision</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Abogado</th>
                 <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">Estado</th>
                 <th className="text-left text-xs font-medium text-slate-500 uppercase py-3 px-4">MP ID</th>
               </tr>
@@ -190,13 +272,16 @@ export default function AdminPayments() {
                     </Badge>
                   </td>
                   <td className="py-3 px-4 text-sm font-medium text-slate-900">
+                    {payment.senderName}
+                  </td>
+                  <td className="py-3 px-4 text-sm text-slate-600">
+                    {payment.lawyerName || "—"}
+                  </td>
+                  <td className="py-3 px-4 text-sm font-medium text-slate-900">
                     {formatCurrency(payment.amount)}
                   </td>
                   <td className="py-3 px-4 text-sm text-emerald-600 font-medium">
                     {formatCurrency(payment.platformFee)}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-slate-600">
-                    {formatCurrency(payment.lawyerAmount)}
                   </td>
                   <td className="py-3 px-4">
                     <Badge variant={statusMap[payment.status]?.variant || "default"}>

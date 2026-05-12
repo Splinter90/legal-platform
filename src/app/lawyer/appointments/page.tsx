@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import {
   CheckCircle,
   XCircle,
   FileText,
+  MessageSquare,
   User,
 } from "lucide-react";
 
@@ -24,7 +26,7 @@ interface Appointment {
   lawyerAmount: number;
   meetLink: string | null;
   notes: string | null;
-  client: { name: string; email: string };
+  client: { id: string; name: string; email: string };
   caseTracking: { id: string; status: string; description: string | null } | null;
 }
 
@@ -246,6 +248,15 @@ export default function LawyerAppointments() {
                       <Video className="w-4 h-4" />
                       Meet
                     </a>
+                  )}
+                  {(apt.status === "confirmed" || apt.status === "completed") && (
+                    <Link
+                      href={`/lawyer/messages?with=${apt.client.id}&name=${encodeURIComponent(apt.client.name)}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Mensaje
+                    </Link>
                   )}
                   {(apt.status === "confirmed" || apt.status === "completed") && (
                     <Button

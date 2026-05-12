@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,8 @@ interface Conversation {
 }
 
 export default function LawyerMessages() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -35,6 +38,7 @@ export default function LawyerMessages() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [access, setAccess] = useState<any>(null);
   const [accessChecked, setAccessChecked] = useState(false);
@@ -45,8 +49,20 @@ export default function LawyerMessages() {
       .then((data) => {
         setAccess(data.access);
         setAccessChecked(true);
-        if (data.access?.canAccessFeatures) fetchConversations();
-        else setLoading(false);
+        if (!data.access?.canAccessFeatures) {
+          setLoading(false);
+          return;
+        }
+        const withId = searchParams.get("with");
+        const withName = searchParams.get("name");
+        if (withId) {
+          setSelectedClient(withId);
+          setSelectedName(withName || "Cliente");
+          fetchMessages(withId);
+          router.replace("/lawyer/messages");
+        } else {
+          fetchConversations();
+        }
       });
   }, []);
 
@@ -114,11 +130,22 @@ export default function LawyerMessages() {
     e.preventDefault();
     if (!newMessage.trim() || !selectedClient) return;
     setSending(true);
-    await fetch("/api/messages", {
+    setSendError(null);
+    const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: newMessage, recipientId: selectedClient }),
     });
+    if (!res.ok) {
+      try {
+        const data = await res.json();
+        setSendError(data.error || "No se pudo enviar el mensaje");
+      } catch {
+        setSendError("No se pudo enviar el mensaje");
+      }
+      setSending(false);
+      return;
+    }
     setNewMessage("");
     setSending(false);
     fetchMessages(selectedClient, false);
@@ -151,7 +178,7 @@ export default function LawyerMessages() {
               <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-500">No tenes conversaciones</p>
               <p className="text-sm text-slate-400 mt-1">
-                Las conversaciones apareceran cuando un cliente te contacte
+                Vas a poder chatear con un cliente después de tu primera consulta confirmada con él.
               </p>
             </CardContent>
           </Card>
@@ -223,17 +250,24 @@ export default function LawyerMessages() {
               )}
               <div ref={messagesEndRef} />
             </div>
-            <form onSubmit={sendMessage} className="px-6 py-4 border-t border-slate-100 flex gap-3">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Escribe un mensaje..."
-                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-              <Button type="submit" disabled={sending || !newMessage.trim()}>
-                <Send className="w-4 h-4" />
-              </Button>
+            <form onSubmit={sendMessage} className="px-6 py-4 border-t border-slate-100 space-y-2">
+              {sendError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {sendError}
+                </p>
+              )}
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Escribe un mensaje..."
+                  className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <Button type="submit" disabled={sending || !newMessage.trim()}>
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
             </form>
           </Card>
         </div>

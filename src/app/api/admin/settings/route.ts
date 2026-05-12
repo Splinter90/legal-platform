@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { validateNumericRange, validatePassword } from "@/lib/validations";
+import { isValidScheme } from "@/lib/mp-fees";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -18,6 +19,10 @@ export async function GET() {
     consultationFee: admin.consultationFee,
     subscriptionFee: admin.subscriptionFee,
     commissionPercent: admin.commissionPercent,
+    mpAccreditationScheme: admin.mpAccreditationScheme,
+    mpFeePercent: admin.mpFeePercent,
+    mpFixedFee: admin.mpFixedFee,
+    mpIvaPercent: admin.mpIvaPercent,
     cbuAlias: admin.cbuAlias,
     username: admin.username,
   });
@@ -51,6 +56,31 @@ export async function PUT(req: NextRequest) {
     const commError = validateNumericRange(body.commissionPercent, 0, 50, "Comisión");
     if (commError) return NextResponse.json({ error: commError }, { status: 400 });
     updateData.commissionPercent = body.commissionPercent;
+  }
+
+  if (body.mpAccreditationScheme !== undefined) {
+    if (!isValidScheme(body.mpAccreditationScheme)) {
+      return NextResponse.json({ error: "Esquema de acreditación inválido" }, { status: 400 });
+    }
+    updateData.mpAccreditationScheme = body.mpAccreditationScheme;
+  }
+
+  if (body.mpFeePercent !== undefined) {
+    const err = validateNumericRange(body.mpFeePercent, 0, 50, "Tasa MP");
+    if (err) return NextResponse.json({ error: err }, { status: 400 });
+    updateData.mpFeePercent = body.mpFeePercent;
+  }
+
+  if (body.mpFixedFee !== undefined) {
+    const err = validateNumericRange(body.mpFixedFee, 0, 10000, "Costo fijo MP");
+    if (err) return NextResponse.json({ error: err }, { status: 400 });
+    updateData.mpFixedFee = body.mpFixedFee;
+  }
+
+  if (body.mpIvaPercent !== undefined) {
+    const err = validateNumericRange(body.mpIvaPercent, 0, 50, "IVA");
+    if (err) return NextResponse.json({ error: err }, { status: 400 });
+    updateData.mpIvaPercent = body.mpIvaPercent;
   }
 
   if (body.cbuAlias !== undefined) {
@@ -97,6 +127,10 @@ export async function PUT(req: NextRequest) {
     consultationFee: updated.consultationFee,
     subscriptionFee: updated.subscriptionFee,
     commissionPercent: updated.commissionPercent,
+    mpAccreditationScheme: updated.mpAccreditationScheme,
+    mpFeePercent: updated.mpFeePercent,
+    mpFixedFee: updated.mpFixedFee,
+    mpIvaPercent: updated.mpIvaPercent,
     cbuAlias: updated.cbuAlias,
     username: updated.username,
   });

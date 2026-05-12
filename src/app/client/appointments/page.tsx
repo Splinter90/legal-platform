@@ -269,6 +269,15 @@ export default function ClientAppointments() {
                           <Video className="w-4 h-4 text-brand-600" />
                         </a>
                       )}
+                      {(apt.status === "confirmed" || apt.status === "completed") && (
+                        <Link
+                          href={`/client/messages?with=${apt.lawyer.id}&name=${encodeURIComponent(`${apt.lawyer.firstName} ${apt.lawyer.lastName}`)}`}
+                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          title="Enviar mensaje"
+                        >
+                          <MessageSquare className="w-4 h-4 text-brand-600" />
+                        </Link>
+                      )}
                       {apt.status === "completed" && (
                         <button
                           onClick={() => {

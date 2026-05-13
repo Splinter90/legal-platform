@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock, XCircle, CreditCard, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Access {
   status: string;
@@ -45,7 +46,7 @@ export function OnboardingStepper({ access, onChanged }: { access: Access; onCha
       const res = await fetch("/api/lawyers/resubmit", { method: "POST" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error || "No se pudo reenviar la solicitud");
+        toast.error(data.error || "No se pudo reenviar la solicitud");
         return;
       }
       onChanged();

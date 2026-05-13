@@ -18,6 +18,7 @@ import {
   FileText,
   Search,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Lawyer {
   id: string;
@@ -122,7 +123,7 @@ export default function AdminLawyers() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      alert(data.error || "Error al actualizar");
+      toast.error(data.error || "Error al actualizar");
       return;
     }
     fetchLawyers();
@@ -132,7 +133,7 @@ export default function AdminLawyers() {
   async function confirmRejection() {
     if (!rejecting) return;
     if (rejectionReason.trim().length < 5) {
-      alert("El motivo debe tener al menos 5 caracteres");
+      toast.error("El motivo debe tener al menos 5 caracteres");
       return;
     }
     setSubmittingRejection(true);
@@ -148,7 +149,7 @@ export default function AdminLawyers() {
     setSubmittingRejection(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      alert(data.error || "Error al rechazar");
+      toast.error(data.error || "Error al rechazar");
       return;
     }
     setRejecting(null);

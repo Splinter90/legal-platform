@@ -10,6 +10,7 @@ import { Stars } from "@/components/ui/stars";
 import { PhoneInputAR } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Save, MapPin, CreditCard, User, Crown, CheckCircle, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
   ssr: false,
@@ -63,7 +64,7 @@ export default function LawyerProfile() {
     if (!res.ok) {
       try {
         const err = await res.json();
-        alert(err.error || "No se pudo guardar");
+        toast.error(err.error || "No se pudo guardar");
       } catch {}
       setSaving(false);
       return;

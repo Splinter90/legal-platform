@@ -13,6 +13,7 @@ import {
   FileText,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -56,10 +57,8 @@ export default function ClientMessages() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,17 +145,16 @@ export default function ClientMessages() {
   async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadError(null);
 
     const isImage = ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type);
     const isPdf = file.type === "application/pdf";
     if (!isImage && !isPdf) {
-      setUploadError("Solo imágenes (JPG, PNG, WEBP) o PDF");
+      toast.error("Solo imágenes (JPG, PNG, WEBP) o PDF");
       e.target.value = "";
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setUploadError("El archivo no puede superar 10MB");
+      toast.error("El archivo no puede superar 10MB");
       e.target.value = "";
       return;
     }
@@ -171,7 +169,7 @@ export default function ClientMessages() {
       const data = await res.json();
       if (!res.ok) {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setUploadError(data?.error || "No se pudo subir el archivo");
+        toast.error(data?.error || "No se pudo subir el archivo");
         return;
       }
       setPendingAttachment({
@@ -181,7 +179,7 @@ export default function ClientMessages() {
         name: file.name,
       });
     } catch {
-      setUploadError("No se pudo subir el archivo");
+      toast.error("No se pudo subir el archivo");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -193,7 +191,6 @@ export default function ClientMessages() {
     if (!selectedLawyer) return;
     if (!newMessage.trim() && !pendingAttachment) return;
     setSending(true);
-    setSendError(null);
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -208,9 +205,9 @@ export default function ClientMessages() {
     if (!res.ok) {
       try {
         const data = await res.json();
-        setSendError(data.error || "No se pudo enviar el mensaje");
+        toast.error(data.error || "No se pudo enviar el mensaje");
       } catch {
-        setSendError("No se pudo enviar el mensaje");
+        toast.error("No se pudo enviar el mensaje");
       }
       setSending(false);
       return;
@@ -308,16 +305,6 @@ export default function ClientMessages() {
               <div ref={messagesEndRef} />
             </div>
             <form onSubmit={sendMessage} className="px-6 py-4 border-t border-slate-100 space-y-2">
-              {sendError && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                  {sendError}
-                </p>
-              )}
-              {uploadError && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                  {uploadError}
-                </p>
-              )}
               {pendingAttachment && (
                 <AttachmentPreview
                   attachment={pendingAttachment}

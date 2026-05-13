@@ -9,6 +9,7 @@ import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feat
 import { PhoneInputAR } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { isOptionalPhoneARValid } from "@/lib/phone";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -90,7 +91,7 @@ export default function LawyerCRM() {
   async function saveClient(e: React.FormEvent) {
     e.preventDefault();
     if (form.phone && !isOptionalPhoneARValid(form.phone)) {
-      alert("Ingresá un celular válido (formato +54 9 11 1234-5678).");
+      toast.error("Ingresá un celular válido (formato +54 9 11 1234-5678).");
       return;
     }
     if (editing) {

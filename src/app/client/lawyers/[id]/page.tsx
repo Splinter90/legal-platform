@@ -1,17 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Stars } from "@/components/ui/stars";
+import { BookingCalendar } from "@/components/ui/booking-calendar";
 import {
   MapPin,
   Phone,
   Mail,
   Calendar,
-  Clock,
   CheckCircle,
   ArrowLeft,
   Video,
@@ -49,6 +49,8 @@ export default function LawyerProfilePage() {
   const { data: session } = useSession();
   const [lawyer, setLawyer] = useState<LawyerProfile | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewRatingFilter, setReviewRatingFilter] = useState<number | "all">("all");
+  const [reviewSort, setReviewSort] = useState<"recent" | "best" | "worst">("recent");
   const [loading, setLoading] = useState(true);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
@@ -58,9 +60,6 @@ export default function LawyerProfilePage() {
   const [success, setSuccess] = useState<any>(null);
   const [error, setError] = useState("");
   const [consultationFee, setConsultationFee] = useState(5000);
-  const [availableSlots, setAvailableSlots] = useState<Array<{ date: string; startTime: string; available: boolean }>>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [slotsMessage, setSlotsMessage] = useState("");
 
   useEffect(() => {
     fetch(`/api/lawyers/${id}`)
@@ -77,25 +76,6 @@ export default function LawyerProfilePage() {
       .then(setReviews)
       .catch(() => {});
   }, [id]);
-
-  useEffect(() => {
-    if (!selectedDate) {
-      setAvailableSlots([]);
-      return;
-    }
-    setSlotsLoading(true);
-    setSlotsMessage("");
-    setSelectedTime("");
-    fetch(`/api/lawyers/${id}/slots?date=${selectedDate}&days=1`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.message) setSlotsMessage(data.message);
-        const daySlots = (data.slots || []).filter((s: any) => s.date === selectedDate && s.available);
-        setAvailableSlots(daySlots);
-      })
-      .catch(() => setSlotsMessage("Error al cargar horarios"))
-      .finally(() => setSlotsLoading(false));
-  }, [id, selectedDate]);
 
   async function handleBooking(e: React.FormEvent) {
     e.preventDefault();
@@ -170,10 +150,6 @@ export default function LawyerProfilePage() {
       </div>
     );
   }
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split("T")[0];
 
   return (
     <div className="animate-in max-w-4xl mx-auto">
@@ -255,36 +231,13 @@ export default function LawyerProfilePage() {
 
       {/* Reviews */}
       {reviews.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="py-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">
-              Resenas ({reviews.length})
-            </h2>
-            <div className="space-y-4">
-              {reviews.map((review) => (
-                <div key={review.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">
-                      {review.client.name[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{review.client.name}</p>
-                      <div className="flex items-center gap-2">
-                        <Stars rating={review.rating} size="xs" />
-                        <span className="text-xs text-slate-400">
-                          {new Date(review.createdAt).toLocaleDateString("es-AR")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  {review.comment && (
-                    <p className="text-sm text-slate-600 ml-11">{review.comment}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <ReviewsSection
+          reviews={reviews}
+          ratingFilter={reviewRatingFilter}
+          setRatingFilter={setReviewRatingFilter}
+          sort={reviewSort}
+          setSort={setReviewSort}
+        />
       )}
 
       {/* Booking section */}
@@ -348,55 +301,15 @@ export default function LawyerProfilePage() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Fecha
-                  </label>
-                  <input
-                    type="date"
-                    min={minDate}
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Horario
-                  </label>
-                  {!selectedDate ? (
-                    <p className="text-sm text-slate-400">Selecciona una fecha para ver los horarios disponibles</p>
-                  ) : slotsLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-500" />
-                      Cargando horarios...
-                    </div>
-                  ) : slotsMessage ? (
-                    <p className="text-sm text-amber-600">{slotsMessage}</p>
-                  ) : availableSlots.length === 0 ? (
-                    <p className="text-sm text-slate-400">No hay horarios disponibles para esta fecha</p>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-                      {availableSlots.map((slot) => (
-                        <button
-                          key={slot.startTime}
-                          type="button"
-                          onClick={() => setSelectedTime(slot.startTime)}
-                          className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                            selectedTime === slot.startTime
-                              ? "bg-brand-600 text-white shadow-lg shadow-glow-brand"
-                              : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-                          }`}
-                        >
-                          <Clock className="w-3.5 h-3.5 inline mr-1" />
-                          {slot.startTime}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <BookingCalendar
+                  lawyerId={String(id)}
+                  selectedDate={selectedDate}
+                  selectedTime={selectedTime}
+                  onSelect={({ date, startTime }) => {
+                    setSelectedDate(date);
+                    setSelectedTime(startTime);
+                  }}
+                />
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -448,5 +361,120 @@ export default function LawyerProfilePage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function ReviewsSection({
+  reviews,
+  ratingFilter,
+  setRatingFilter,
+  sort,
+  setSort,
+}: {
+  reviews: Review[];
+  ratingFilter: number | "all";
+  setRatingFilter: (v: number | "all") => void;
+  sort: "recent" | "best" | "worst";
+  setSort: (v: "recent" | "best" | "worst") => void;
+}) {
+  const filtered = useMemo(() => {
+    let list = ratingFilter === "all" ? reviews : reviews.filter((r) => r.rating === ratingFilter);
+    list = [...list];
+    if (sort === "best") list.sort((a, b) => b.rating - a.rating);
+    else if (sort === "worst") list.sort((a, b) => a.rating - b.rating);
+    else list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list;
+  }, [reviews, ratingFilter, sort]);
+
+  const counts = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const r of reviews) map.set(r.rating, (map.get(r.rating) || 0) + 1);
+    return map;
+  }, [reviews]);
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="py-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Resenas ({filtered.length}
+            {filtered.length !== reviews.length ? ` de ${reviews.length}` : ""})
+          </h2>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as "recent" | "best" | "worst")}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="recent">Más recientes</option>
+            <option value="best">Mejor rating</option>
+            <option value="worst">Peor rating</option>
+          </select>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setRatingFilter("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+              ratingFilter === "all"
+                ? "bg-brand-600 text-white"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            Todas
+          </button>
+          {[5, 4, 3, 2, 1].map((r) => {
+            const c = counts.get(r) || 0;
+            return (
+              <button
+                key={r}
+                type="button"
+                disabled={c === 0}
+                onClick={() => setRatingFilter(r)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1 ${
+                  ratingFilter === r
+                    ? "bg-brand-600 text-white"
+                    : c === 0
+                    ? "bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100"
+                    : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {r}★ <span className="opacity-70">({c})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="text-sm text-slate-400 py-6 text-center">
+            No hay reseñas con esa calificación.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((review) => (
+              <div key={review.id} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">
+                    {review.client.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{review.client.name}</p>
+                    <div className="flex items-center gap-2">
+                      <Stars rating={review.rating} size="xs" />
+                      <span className="text-xs text-slate-400">
+                        {new Date(review.createdAt).toLocaleDateString("es-AR")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {review.comment && (
+                  <p className="text-sm text-slate-600 ml-11">{review.comment}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

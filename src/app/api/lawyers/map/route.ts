@@ -25,6 +25,8 @@ export async function GET() {
       latitude: true,
       longitude: true,
       narrative: true,
+      profilePhoto: true,
+      phone: true,
     },
   });
 

@@ -1,12 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Stars } from "@/components/ui/stars";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Phone, ArrowRight } from "lucide-react";
-import Link from "next/link";
+import { MapPin } from "lucide-react";
 
 interface LawyerMarker {
   id: string;
@@ -22,72 +19,81 @@ interface LawyerMarker {
   longitude: number;
   narrative?: string;
   phone?: string;
+  profilePhoto?: string | null;
 }
 
 interface LawyersMapProps {
   lawyers: LawyerMarker[];
   showLink?: boolean;
   height?: string;
+  userLocation?: { latitude: number; longitude: number } | null;
 }
 
-const defaultIcon = L.divIcon({
-  className: "custom-marker",
-  html: `<div style="
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    border: 3px solid white;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  ">
-    <div style="
-      transform: rotate(45deg);
-      color: white;
-      font-weight: bold;
-      font-size: 14px;
-    ">⚖</div>
-  </div>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -36],
+function lawyerIcon(lawyer: LawyerMarker, isTop: boolean) {
+  const size = isTop ? 52 : 44;
+  const initials = `${lawyer.firstName[0] || ""}${lawyer.lastName[0] || ""}`.toUpperCase();
+  const ring = isTop
+    ? "linear-gradient(135deg, #f59e0b, #ef4444)"
+    : "linear-gradient(135deg, #3b82f6, #6366f1)";
+  const inner = lawyer.profilePhoto
+    ? `<img src="${lawyer.profilePhoto}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:${
+        isTop ? 16 : 14
+      }px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:50%;">${initials}</div>`;
+  return L.divIcon({
+    className: "lawyer-photo-marker",
+    html: `<div style="
+        width:${size}px;
+        height:${size}px;
+        border-radius:50%;
+        padding:3px;
+        background:${ring};
+        box-shadow:0 4px 12px rgba(15,23,42,0.25);
+      ">
+        <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;background:white;">
+          ${inner}
+        </div>
+      </div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+  });
+}
+
+const userIcon = L.divIcon({
+  className: "user-location-marker",
+  html: `<div style="position:relative;width:24px;height:24px;">
+      <div style="position:absolute;inset:0;border-radius:50%;background:#3b82f6;opacity:0.25;animation:pulse 2s infinite;"></div>
+      <div style="position:absolute;inset:6px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.2);"></div>
+    </div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
 });
 
-const highlightIcon = L.divIcon({
-  className: "custom-marker-highlight",
-  html: `<div style="
-    width: 42px;
-    height: 42px;
-    background: linear-gradient(135deg, #f59e0b, #ef4444);
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    border: 3px solid white;
-    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  ">
-    <div style="
-      transform: rotate(45deg);
-      color: white;
-      font-weight: bold;
-      font-size: 16px;
-    ">★</div>
-  </div>`,
-  iconSize: [42, 42],
-  iconAnchor: [21, 42],
-  popupAnchor: [0, -42],
-});
+function RecenterOnUser({ coords }: { coords: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (coords) map.setView(coords, 13, { animate: true });
+  }, [coords, map]);
+  return null;
+}
 
-export default function LawyersMap({ lawyers, showLink = true, height = "600px" }: LawyersMapProps) {
+export default function LawyersMap({
+  lawyers,
+  showLink = true,
+  height = "600px",
+  userLocation,
+}: LawyersMapProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const userCoords = useMemo<[number, number] | null>(
+    () => (userLocation ? [userLocation.latitude, userLocation.longitude] : null),
+    [userLocation]
+  );
 
   if (!mounted) {
     return (
@@ -103,15 +109,21 @@ export default function LawyersMap({ lawyers, showLink = true, height = "600px" 
     );
   }
 
-  const center: [number, number] = lawyers.length > 0
-    ? [
-        lawyers.reduce((s, l) => s + l.latitude, 0) / lawyers.length,
-        lawyers.reduce((s, l) => s + l.longitude, 0) / lawyers.length,
-      ]
-    : [-38.0055, -57.5426];
+  const center: [number, number] =
+    userCoords ||
+    (lawyers.length > 0
+      ? [
+          lawyers.reduce((s, l) => s + l.latitude, 0) / lawyers.length,
+          lawyers.reduce((s, l) => s + l.longitude, 0) / lawyers.length,
+        ]
+      : [-38.0055, -57.5426]);
 
   return (
-    <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200" style={{ height }}>
+    <div
+      className="rounded-2xl overflow-hidden shadow-lg border border-slate-200"
+      style={{ height }}
+    >
+      <style>{`@keyframes pulse{0%{transform:scale(1);opacity:.35}70%{transform:scale(1.8);opacity:0}100%{transform:scale(1.8);opacity:0}}`}</style>
       <MapContainer
         center={center}
         zoom={13}
@@ -122,48 +134,72 @@ export default function LawyersMap({ lawyers, showLink = true, height = "600px" 
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
+        <RecenterOnUser coords={userCoords} />
+
+        {userCoords && (
+          <Marker position={userCoords} icon={userIcon}>
+            <Popup>Tu ubicación</Popup>
+          </Marker>
+        )}
+
         {lawyers.map((lawyer) => (
           <Marker
             key={lawyer.id}
             position={[lawyer.latitude, lawyer.longitude]}
-            icon={lawyer.rating >= 4.8 ? highlightIcon : defaultIcon}
+            icon={lawyerIcon(lawyer, lawyer.rating >= 4.8)}
           >
             <Popup maxWidth={320} minWidth={280}>
               <div className="p-1">
                 <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="flex-shrink-0"
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      borderRadius: "12px",
-                      background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white",
-                      fontWeight: "bold",
-                      fontSize: "18px",
-                    }}
-                  >
-                    {lawyer.firstName[0]}{lawyer.lastName[0]}
-                  </div>
+                  {lawyer.profilePhoto ? (
+                    <img
+                      src={lawyer.profilePhoto}
+                      alt={`${lawyer.firstName} ${lawyer.lastName}`}
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 12,
+                        objectFit: "cover",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        width: 48,
+                        height: 48,
+                        borderRadius: 12,
+                        background: "linear-gradient(135deg, #3b82f6, #6366f1)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        fontWeight: "bold",
+                        fontSize: 18,
+                      }}
+                    >
+                      {lawyer.firstName[0]}
+                      {lawyer.lastName[0]}
+                    </div>
+                  )}
                   <div>
-                    <h3 style={{ fontWeight: 700, fontSize: "15px", margin: 0, color: "#1e293b" }}>
+                    <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0, color: "#1e293b" }}>
                       {lawyer.firstName} {lawyer.lastName}
                     </h3>
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
-                      <span style={{ color: "#f59e0b", fontSize: "13px" }}>
-                        {"★".repeat(Math.round(lawyer.rating))}{"☆".repeat(5 - Math.round(lawyer.rating))}
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                      <span style={{ color: "#f59e0b", fontSize: 13 }}>
+                        {"★".repeat(Math.round(lawyer.rating))}
+                        {"☆".repeat(5 - Math.round(lawyer.rating))}
                       </span>
-                      <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                      <span style={{ fontSize: 12, color: "#94a3b8" }}>
                         ({lawyer.reviewCount})
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
                   {lawyer.specialties.split(",").map((s) => (
                     <span
                       key={s}
@@ -171,8 +207,8 @@ export default function LawyersMap({ lawyers, showLink = true, height = "600px" 
                         background: "#eff6ff",
                         color: "#2563eb",
                         padding: "2px 8px",
-                        borderRadius: "999px",
-                        fontSize: "11px",
+                        borderRadius: 999,
+                        fontSize: 11,
                         fontWeight: 500,
                       }}
                     >
@@ -182,13 +218,24 @@ export default function LawyersMap({ lawyers, showLink = true, height = "600px" 
                 </div>
 
                 {lawyer.address && (
-                  <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 4px 0", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 4px 0" }}>
                     📍 {lawyer.address}
                   </p>
                 )}
 
                 {lawyer.narrative && (
-                  <p style={{ fontSize: "12px", color: "#64748b", margin: "6px 0", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#64748b",
+                      margin: "6px 0",
+                      lineHeight: 1.4,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
                     {lawyer.narrative}
                   </p>
                 )}
@@ -200,13 +247,13 @@ export default function LawyersMap({ lawyers, showLink = true, height = "600px" 
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px",
-                      marginTop: "10px",
+                      gap: 6,
+                      marginTop: 10,
                       padding: "8px 16px",
                       background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                       color: "white",
-                      borderRadius: "10px",
-                      fontSize: "13px",
+                      borderRadius: 10,
+                      fontSize: 13,
                       fontWeight: 600,
                       textDecoration: "none",
                     }}

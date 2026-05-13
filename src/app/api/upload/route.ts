@@ -109,8 +109,16 @@ export async function POST(req: NextRequest) {
       name: file.name,
       size: file.size,
     });
-  } catch (error) {
+  } catch (error: any) {
+    const detail =
+      error?.message ||
+      error?.error?.message ||
+      (typeof error === "string" ? error : null) ||
+      "desconocido";
     console.error("Upload error:", error);
-    return NextResponse.json({ error: "Error al subir archivo" }, { status: 500 });
+    return NextResponse.json(
+      { error: `Error al subir archivo: ${detail}` },
+      { status: 500 }
+    );
   }
 }

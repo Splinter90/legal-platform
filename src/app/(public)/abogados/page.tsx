@@ -101,11 +101,11 @@ export default function PublicLawyersPage() {
             inLanguage: "es-AR",
             isPartOf: {
               "@type": "WebSite",
-              name: "Leges Digital",
+              name: "Leyes Digital",
             },
             about: {
               "@type": "LegalService",
-              name: "Leges Digital",
+              name: "Leyes Digital",
               areaServed: "AR",
             },
           }),

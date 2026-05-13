@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "LegesDigital/1.0 (contacto@legesdigital.com)" },
+      headers: { "User-Agent": "LeyesDigital/1.0 (contacto@leyesdigital.com)" },
       next: { revalidate: 0 },
     });
     if (!res.ok) return NextResponse.json({ results: [] });

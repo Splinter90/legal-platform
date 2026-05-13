@@ -3,12 +3,12 @@ import Link from "next/link";
 import { Mail, Phone, MapPin, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Contacto - Leges Digital",
+  title: "Contacto - Leyes Digital",
   description:
-    "Canales de contacto de Leges Digital. Soporte, consultas y reclamos.",
+    "Canales de contacto de Leyes Digital. Soporte, consultas y reclamos.",
 };
 
-const CONTACT_EMAIL = "contacto@legesdigital.com";
+const CONTACT_EMAIL = "contacto@leyesdigital.com";
 const CONTACT_PHONE = "+54 9 223 618-2864";
 
 export default function ContactPage() {

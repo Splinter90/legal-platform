@@ -32,7 +32,7 @@ export function BrandLogo({ href = "/", size = "md", tone = "dark", className }:
             tone === "dark" ? "bg-gradient-to-r from-brand-300 to-accent-300 bg-clip-text text-transparent" : "text-slate-900"
           )}
         >
-          Leges Digital
+          Leyes Digital
         </span>
         <span
           className={cn(

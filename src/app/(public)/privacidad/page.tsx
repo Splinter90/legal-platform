@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Politica de Privacidad - Leges Digital",
+  title: "Politica de Privacidad - Leyes Digital",
   description:
-    "Politica de privacidad y tratamiento de datos personales de la plataforma Leges Digital.",
+    "Politica de privacidad y tratamiento de datos personales de la plataforma Leyes Digital.",
 };
 
 const EFFECTIVE_DATE = "11 de mayo de 2026";
-const CONTACT_EMAIL = "contacto@legesdigital.com";
+const CONTACT_EMAIL = "contacto@leyesdigital.com";
 
 export default function PrivacyPage() {
   return (
@@ -28,14 +28,14 @@ export default function PrivacyPage() {
       <div className="prose prose-invert prose-slate max-w-none space-y-8 text-slate-300 leading-relaxed">
         <Section title="1. Quienes somos">
           <p>
-            Esta politica describe como Leges Digital ("la Plataforma",
+            Esta politica describe como Leyes Digital ("la Plataforma",
             "nosotros") trata los datos personales de los usuarios que
             interactuan con nuestro sitio web y servicios. Operamos como
             marketplace que conecta clientes con abogados matriculados en la
             Republica Argentina.
           </p>
           <p>
-            Responsable del tratamiento: <strong>Leges Digital</strong>, con
+            Responsable del tratamiento: <strong>Leyes Digital</strong>, con
             domicilio en Mar del Plata, Provincia de Buenos Aires, Argentina.
             Correo de contacto: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
           </p>
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
             .
           </p>
           <p className="text-sm text-slate-400">
-            El uso que Leges Digital hace de la informacion recibida de las
+            El uso que Leyes Digital hace de la informacion recibida de las
             APIs de Google cumple con la{" "}
             <a
               href="https://developers.google.com/terms/api-services-user-data-policy"

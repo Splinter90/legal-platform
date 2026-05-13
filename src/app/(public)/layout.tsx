@@ -120,7 +120,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-brand-400" />
-                  <span className="text-slate-400 text-sm">contacto@legesdigital.com</span>
+                  <span className="text-slate-400 text-sm">contacto@leyesdigital.com</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-brand-400" />
@@ -136,7 +136,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-slate-500 text-sm">
-              (c) 2026 Leges Digital. Todos los derechos reservados.
+              (c) 2026 Leyes Digital. Todos los derechos reservados.
             </p>
             <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <Link href="/privacidad" className="hover:text-brand-400 transition-colors">

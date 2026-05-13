@@ -32,7 +32,7 @@ const SITE_URL = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "LegalService",
-  name: "Leges Digital",
+  name: "Leyes Digital",
   url: SITE_URL,
   logo: `${SITE_URL}/logo.jpeg`,
   description:
@@ -47,7 +47,7 @@ const organizationJsonLd = {
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",
-    email: "contacto@legesdigital.com",
+    email: "contacto@leyesdigital.com",
     telephone: "+54-9-223-618-2864",
     availableLanguage: ["Spanish"],
   },
@@ -58,7 +58,7 @@ const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   url: SITE_URL,
-  name: "Leges Digital",
+  name: "Leyes Digital",
   inLanguage: "es-AR",
   potentialAction: {
     "@type": "SearchAction",
@@ -624,7 +624,7 @@ export default function Home() {
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-brand-400" />
-                  <span className="text-slate-400 text-sm">contacto@legesdigital.com</span>
+                  <span className="text-slate-400 text-sm">contacto@leyesdigital.com</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-brand-400" />
@@ -640,7 +640,7 @@ export default function Home() {
 
           <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-slate-500 text-sm">
-              © 2026 Leges Digital. Todos los derechos reservados.
+              © 2026 Leyes Digital. Todos los derechos reservados.
             </p>
             <p className="text-slate-500 text-xs">
               Estudio Jurídico Digital · Mar del Plata, Argentina

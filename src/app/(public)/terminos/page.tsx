@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terminos y Condiciones - Leges Digital",
+  title: "Terminos y Condiciones - Leyes Digital",
   description:
-    "Terminos y condiciones de uso del marketplace legal Leges Digital.",
+    "Terminos y condiciones de uso del marketplace legal Leyes Digital.",
 };
 
 const EFFECTIVE_DATE = "11 de mayo de 2026";
-const CONTACT_EMAIL = "contacto@legesdigital.com";
+const CONTACT_EMAIL = "contacto@leyesdigital.com";
 
 export default function TermsPage() {
   return (
@@ -28,14 +28,14 @@ export default function TermsPage() {
       <div className="space-y-8 text-slate-300 leading-relaxed">
         <Section title="1. Aceptacion">
           <p>
-            Estos Terminos regulan el uso de la plataforma Leges Digital
+            Estos Terminos regulan el uso de la plataforma Leyes Digital
             ("la Plataforma"). Al registrarte, acceder o utilizar la
             Plataforma aceptas estos Terminos. Si no estas de acuerdo, no
             la utilices.
           </p>
         </Section>
 
-        <Section title="2. Que es Leges Digital">
+        <Section title="2. Que es Leyes Digital">
           <p>
             La Plataforma es un marketplace que conecta clientes con
             abogados matriculados en la Republica Argentina. No prestamos
@@ -44,7 +44,7 @@ export default function TermsPage() {
           </p>
           <p>
             La relacion profesional se establece directamente entre el
-            cliente y el abogado. Leges Digital no es parte de esa
+            cliente y el abogado. Leyes Digital no es parte de esa
             relacion ni asume responsabilidad por el contenido del
             asesoramiento brindado.
           </p>
@@ -117,7 +117,7 @@ export default function TermsPage() {
           <ul className="list-disc pl-6 space-y-2">
             <li>
               El precio de la consulta es definido por el administrador
-              de la Plataforma y publicado en cada momento. Leges Digital
+              de la Plataforma y publicado en cada momento. Leyes Digital
               retiene una comision sobre cada consulta cobrada.
             </li>
             <li>
@@ -126,7 +126,7 @@ export default function TermsPage() {
               en busquedas hasta que se regularice.
             </li>
             <li>
-              Todos los pagos se procesan a traves de Mercado Pago. Leges
+              Todos los pagos se procesan a traves de Mercado Pago. Leyes
               Digital no almacena datos sensibles de tarjetas ni medios
               de pago.
             </li>
@@ -184,7 +184,7 @@ export default function TermsPage() {
         <Section title="10. Propiedad intelectual">
           <p>
             La marca, el logo, los textos, el codigo y los demas elementos
-            de la Plataforma pertenecen a Leges Digital o a sus
+            de la Plataforma pertenecen a Leyes Digital o a sus
             licenciantes y estan protegidos por la legislacion de
             propiedad intelectual. Esta prohibido reproducirlos sin
             autorizacion escrita.
@@ -200,7 +200,7 @@ export default function TermsPage() {
         <Section title="11. Limitacion de responsabilidad">
           <p>
             La Plataforma se ofrece "tal cual" y "segun disponibilidad".
-            En la maxima medida permitida por la ley, Leges Digital no
+            En la maxima medida permitida por la ley, Leyes Digital no
             sera responsable por daños indirectos, lucro cesante,
             perdida de oportunidad ni daño moral derivado del uso o
             imposibilidad de uso de la Plataforma, ni por la calidad o

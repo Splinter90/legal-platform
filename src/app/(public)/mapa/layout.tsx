@@ -35,7 +35,7 @@ const jsonLd = {
   inLanguage: "es-AR",
   isPartOf: {
     "@type": "WebSite",
-    name: "Leges Digital",
+    name: "Leyes Digital",
     url: SITE_URL,
   },
 };

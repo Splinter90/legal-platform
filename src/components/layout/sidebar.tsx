@@ -101,7 +101,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
           </div>
           <div className="leading-tight min-w-0">
             <h1 className="text-base font-extrabold tracking-tight bg-gradient-to-r from-brand-600 to-brand-700 bg-clip-text text-transparent">
-              Leges Digital
+              Leyes Digital
             </h1>
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
               {roleLabels[role]}

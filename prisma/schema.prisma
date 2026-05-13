@@ -159,20 +159,21 @@ model CaseTracking {
 }
 
 model Message {
-  id             String   @id @default(cuid())
-  content        String
-  senderId       String
-  senderType     String
-  lawyerId       String
-  clientId       String
-  read           Boolean  @default(false)
-  attachmentUrl  String?
-  attachmentType String?
-  attachmentName String?
-  createdAt      DateTime @default(now())
+  id                  String   @id @default(cuid())
+  content             String
+  senderId            String
+  senderType          String
+  lawyerId            String
+  clientId            String
+  read                Boolean  @default(false)
+  attachmentUrl       String?
+  attachmentPublicId  String?
+  attachmentType      String?
+  attachmentName      String?
+  createdAt           DateTime @default(now())
 
-  lawyer         Lawyer   @relation("LawyerMessages", fields: [lawyerId], references: [id])
-  client         Client   @relation("ClientMessages", fields: [clientId], references: [id])
+  lawyer              Lawyer   @relation("LawyerMessages", fields: [lawyerId], references: [id])
+  client              Client   @relation("ClientMessages", fields: [clientId], references: [id])
 }
 
 model Notification {

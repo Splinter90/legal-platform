@@ -80,10 +80,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { content, recipientId, attachmentUrl, attachmentType, attachmentName } = await req.json();
+  const {
+    content,
+    recipientId,
+    attachmentPublicId,
+    attachmentType,
+    attachmentName,
+  } = await req.json();
 
   const trimmedContent = typeof content === "string" ? content.trim() : "";
-  const hasAttachment = typeof attachmentUrl === "string" && attachmentUrl.trim().length > 0;
+  const hasAttachment =
+    typeof attachmentPublicId === "string" && attachmentPublicId.trim().length > 0;
 
   if (!trimmedContent && !hasAttachment) {
     return NextResponse.json({ error: "El mensaje no puede estar vacío" }, { status: 400 });
@@ -101,14 +108,8 @@ export async function POST(req: NextRequest) {
     if (attachmentType !== "image" && attachmentType !== "pdf") {
       return NextResponse.json({ error: "Tipo de adjunto inválido" }, { status: 400 });
     }
-    try {
-      const parsed = new URL(attachmentUrl);
-      if (parsed.protocol !== "https:") throw new Error("non-https");
-      if (!/cloudinary\.com$/i.test(parsed.hostname) && !/\.cloudinary\.com$/i.test(parsed.hostname)) {
-        throw new Error("untrusted host");
-      }
-    } catch {
-      return NextResponse.json({ error: "URL de adjunto inválida" }, { status: 400 });
+    if (!/^legal-platform\/message-attachments\//.test(attachmentPublicId)) {
+      return NextResponse.json({ error: "publicId de adjunto inválido" }, { status: 400 });
     }
   }
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
       senderType: role,
       lawyerId,
       clientId,
-      attachmentUrl: hasAttachment ? attachmentUrl : null,
+      attachmentPublicId: hasAttachment ? attachmentPublicId : null,
       attachmentType: hasAttachment ? attachmentType : null,
       attachmentName: hasAttachment
         ? (typeof attachmentName === "string" && attachmentName.trim().length > 0

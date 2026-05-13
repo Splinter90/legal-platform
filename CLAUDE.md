@@ -63,7 +63,8 @@ Appointment        — lawyer × client × dateTime, status (pending_payment|con
 Review             — lawyer × client × rating(1-5) + comment, unique por par
 CrmClient          — clientes del abogado (también offline), status (in_progress|...) + caseType
 CaseTracking       — 1-a-1 con Appointment, status del trámite
-Message            — content + (attachmentUrl, attachmentType: "image"|"pdf", attachmentName)
+Message            — content + (attachmentPublicId, attachmentType: "image"|"pdf", attachmentName);
+                     attachmentUrl queda legacy (mensajes pre-13/05 con URL pública)
 Notification       — userId/userType, type, title, message, link, appointmentId
 Payment            — pago de cita o suscripción; mpPaymentId/mpPreferenceId/mpMerchantOrder + status
 ```
@@ -91,7 +92,8 @@ Middleware en `src/middleware.ts` exige rol matching:
 - **Pagos**: `/api/payments` (preference), `/callback`, `/webhook` (firmado), `/subscription`
 - **Slots**: `/api/lawyers/[id]/slots?days=30` — devuelve slots disponibles para el calendario
 - **Mensajes**: `/api/messages` (GET conversación, POST acepta `attachmentUrl/Type/Name`)
-- **Upload**: `/api/upload` — carpetas autorizadas: `lawyer-applications` (pública), `lawyers`/`general`/`message-attachments` (auth). PDF solo en `message-attachments` (10MB), imágenes 5MB.
+- **Upload**: `/api/upload` — carpetas autorizadas: `lawyer-applications` (pública), `lawyers`/`general`/`message-attachments` (auth). PDF solo en `message-attachments` (10MB), imágenes 5MB. `message-attachments` sube con `type: "authenticated"` (no público) y devuelve `publicId`.
+- **Adjunto de mensaje (proxy seguro)**: `/api/messages/[id]/attachment` — verifica sesión + que el usuario sea cliente o abogado del mensaje, firma URL Cloudinary y redirige. `?download=1` fuerza descarga (Content-Disposition: attachment).
 - **Reviews**: `/api/reviews` — POST exige una `Appointment.status === "completed"` y unicidad por par
 - **Notificaciones**: `/api/notifications`
 - **Geo**: `/api/geocode/search`, `/api/lawyers/map`
@@ -130,6 +132,7 @@ Middleware en `src/middleware.ts` exige rol matching:
 ### Sesión 13/05/2026 (hoy — pusheada)
 - **Commit `fbd6613`**: BookingCalendar (mes con slots disponibles) + filtros de reseñas (1-5★, recientes/mejor/peor) + mapa pide geolocalización del cliente y ordena por cercanía + marcadores usan foto de perfil del abogado.
 - **Commit `7954140`**: adjuntos en mensajes — imágenes y PDF (hasta 10MB) vía Cloudinary, `Message.attachmentUrl/Type/Name`, UI con clip + preview + render inline para imágenes / pill descargable para PDFs. Espejado en cliente y abogado.
+- **Tier 0 #1 (privacidad de adjuntos)**: uploads de mensajes ahora con `type: "authenticated"` (no público). Schema agrega `attachmentPublicId`. Nuevo endpoint `/api/messages/[id]/attachment` que firma URL Cloudinary y redirige. Mensajes viejos con `attachmentUrl` siguen funcionando vía fallback en el proxy.
 
 ---
 
@@ -202,10 +205,9 @@ Para que MP llegue al webhook en dev, el `.env` está apuntado a una URL de **ng
 ## Pendientes conocidos / cosas a tener en cuenta
 
 - **DB de staging**: actualmente local y prod comparten Neon. Riesgo: `db:push` desde local puede romper prod.
-- **Botón de descarga PDF en mensajes**: el bubble es clickeable a la URL pública de Cloudinary, pero conviene tener un endpoint proxy si se quiere registrar accesos o exigir auth.
 - **Reviews**: el cliente puede dejar UNA. No hay edición ni respuesta del abogado todavía.
 - **MP webhook idempotency**: ver `src/app/api/payments/webhook/route.ts`. Verificar que no se procesen pagos duplicados.
-- **Adjuntos rotos en pagos**: si MP cae mid-payment, el fallback es confirmar la cita sin pago (`/appointments/[id]/confirm`). Útil para dev, peligroso para prod.
+- **Fallback confirm-without-payment**: si MP cae mid-payment, el código confirma la cita sin pago (`/appointments/[id]/confirm`). Útil para dev, peligroso para prod — gatear con env var.
 
 ---
 

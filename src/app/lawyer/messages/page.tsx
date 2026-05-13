@@ -25,6 +25,7 @@ interface Message {
   read: boolean;
   createdAt: string;
   attachmentUrl: string | null;
+  attachmentPublicId: string | null;
   attachmentType: string | null;
   attachmentName: string | null;
   lawyer: { id: string; firstName: string; lastName: string };
@@ -40,7 +41,8 @@ interface Conversation {
 }
 
 interface PendingAttachment {
-  url: string;
+  previewUrl: string;
+  publicId: string;
   type: "image" | "pdf";
   name: string;
 }
@@ -174,17 +176,20 @@ export default function LawyerMessages() {
 
     setUploading(true);
     try {
+      const previewUrl = isImage ? URL.createObjectURL(file) : "";
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "message-attachments");
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
       if (!res.ok) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
         setUploadError(data?.error || "No se pudo subir el archivo");
         return;
       }
       setPendingAttachment({
-        url: data.url,
+        previewUrl,
+        publicId: data.publicId,
         type: isPdf ? "pdf" : "image",
         name: file.name,
       });
@@ -208,7 +213,7 @@ export default function LawyerMessages() {
       body: JSON.stringify({
         content: newMessage,
         recipientId: selectedClient,
-        attachmentUrl: pendingAttachment?.url,
+        attachmentPublicId: pendingAttachment?.publicId,
         attachmentType: pendingAttachment?.type,
         attachmentName: pendingAttachment?.name,
       }),
@@ -224,6 +229,9 @@ export default function LawyerMessages() {
       return;
     }
     setNewMessage("");
+    if (pendingAttachment?.previewUrl) {
+      URL.revokeObjectURL(pendingAttachment.previewUrl);
+    }
     setPendingAttachment(null);
     setSending(false);
     fetchMessages(selectedClient, false);
@@ -379,6 +387,8 @@ export default function LawyerMessages() {
 
 function MessageBubble({ msg }: { msg: Message }) {
   const isLawyer = msg.senderType === "lawyer";
+  const hasAttachment = Boolean(msg.attachmentPublicId || msg.attachmentUrl);
+  const proxyUrl = `/api/messages/${msg.id}/attachment`;
   return (
     <div className={`flex ${isLawyer ? "justify-end" : "justify-start"}`}>
       <div
@@ -388,23 +398,23 @@ function MessageBubble({ msg }: { msg: Message }) {
             : "bg-slate-100 text-slate-900"
         }`}
       >
-        {msg.attachmentUrl && msg.attachmentType === "image" && (
+        {hasAttachment && msg.attachmentType === "image" && (
           <a
-            href={msg.attachmentUrl}
+            href={proxyUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="block mb-2"
           >
             <img
-              src={msg.attachmentUrl}
+              src={proxyUrl}
               alt={msg.attachmentName || "Imagen"}
               className="rounded-xl max-h-56 w-auto object-cover"
             />
           </a>
         )}
-        {msg.attachmentUrl && msg.attachmentType === "pdf" && (
+        {hasAttachment && msg.attachmentType === "pdf" && (
           <a
-            href={msg.attachmentUrl}
+            href={`${proxyUrl}?download=1`}
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${
@@ -442,7 +452,7 @@ function AttachmentPreview({
     <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
       {attachment.type === "image" ? (
         <img
-          src={attachment.url}
+          src={attachment.previewUrl}
           alt={attachment.name}
           className="w-12 h-12 rounded-lg object-cover"
         />

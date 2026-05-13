@@ -76,11 +76,19 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const resourceType: "image" | "raw" = isPdf ? "raw" : "image";
+    const deliveryType: "upload" | "authenticated" = isMessageAttachment
+      ? "authenticated"
+      : "upload";
 
-    const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    const uploadResult = await new Promise<{
+      secure_url: string;
+      public_id: string;
+      resource_type: string;
+    }>((resolve, reject) => {
       const uploadOptions: any = {
         folder: `legal-platform/${folder}`,
         resource_type: resourceType,
+        type: deliveryType,
       };
       if (resourceType === "image") {
         uploadOptions.allowed_formats = ["jpg", "jpeg", "png", "webp"];
@@ -88,13 +96,15 @@ export async function POST(req: NextRequest) {
       cloudinary.uploader
         .upload_stream(uploadOptions, (error, result) => {
           if (error || !result) return reject(error);
-          resolve(result as { secure_url: string });
+          resolve(result as any);
         })
         .end(buffer);
     });
 
     return NextResponse.json({
-      url: uploadResult.secure_url,
+      url: isMessageAttachment ? null : uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      resourceType: uploadResult.resource_type,
       type: isPdf ? "pdf" : "image",
       name: file.name,
       size: file.size,

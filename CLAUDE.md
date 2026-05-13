@@ -15,10 +15,11 @@ para el abogado y panel admin con métricas y comisiones.
 - `7930e7d` — Este CLAUDE.md como fuente operativa.
 - `3c787b7` → `a3f7a55` — Intento Tier 0 #1 (adjuntos privados con Cloudinary `type: authenticated`). **Plan free de Cloudinary no entrega esos assets**, así que revertimos a `type: upload`. Quedaron implementados: el proxy `/api/messages/[id]/attachment` (con ACL por sesión), `Message.attachmentPublicId` en schema. La privacidad real espera la migración a hosting propio.
 
+**Tier 0 cerrado** con commits `65ef05c` (idempotency MP), `38e54c2` (fix fallback), y configuración manual de Neon branching (branch `Abogados` para dev).
+
 **Por dónde seguir**:
-1. Tier 0 #2 (DB de staging en Neon)
-2. Tier 0 #3 (idempotency MP webhook)
-3. Tier 0 #4 (apagar fallback confirm-without-payment en prod)
+- Opción A: Tier 1 (seguridad endurecida) — headers CSP/HSTS, audit log admin, rate-limit más amplio.
+- Opción B: Tier 3 (rediseño visual completo) — paleta Navy+Gold de UI/UX Pro Max, dark mode, dot grid, EB Garamond. Tenemos prototipo HTML aprobado en `Desktop/claude/prototipo-legalconnect-v2.html`.
 
 Ver sección "Roadmap pendiente" más abajo para la lista completa priorizada.
 
@@ -27,7 +28,9 @@ Ver sección "Roadmap pendiente" más abajo para la lista completa priorizada.
 ## Stack
 
 - **Framework**: Next.js **13.5** (App Router) + React 18 + TypeScript 5.
-- **DB**: PostgreSQL en **Neon** (`neondb` / pooler `ep-aged-bar-am2j75to-pooler.c-5.us-east-1.aws.neon.tech`).
+- **DB**: PostgreSQL en **Neon**. Proyecto `morning-haze-62906870`. Dos branches:
+  - **`producción`** (compute `ep-aged-bar-am2j75to`) — usada por Vercel. **Nunca conectarse desde local.**
+  - **`Abogados`** (compute `ep-shiny-mouse-amlo3gwe`) — usada en local vía `.env`. Sandbox de desarrollo.
 - **ORM**: Prisma 5.22. Schema en `prisma/schema.prisma`.
 - **Auth**: NextAuth 4 con dos providers — Google OAuth (clientes y abogados) y `CredentialsProvider` "admin-login" (admin + 2FA TOTP opcional).
 - **Pagos**: Mercado Pago Checkout Pro (`MercadoPagoConfig` SDK). Webhook firmado.
@@ -58,9 +61,15 @@ npm run db:generate      # solo regenerar @prisma/client
 npm test                 # vitest run
 ```
 
-> **Importante**: el `.env` apunta al **mismo Neon que producción**. `db:push`
-> y `db:reset` desde local impactan en prod. Crear una DB de staging es
-> pendiente.
+> **Importante**: el `.env` local apunta al branch `Abogados` de Neon, NO a
+> producción. `db:push` y `db:reset` desde local solo afectan al sandbox de
+> desarrollo. La DB de producción solo se modifica desde Vercel.
+>
+> **Cambios de schema en producción**: hacer `db:push` desde local primero
+> (afecta sólo `Abogados`), validar, y después aplicar a `producción` desde
+> el dashboard de Neon (Branches → producción → "Restablecer desde rama hija"
+> apuntando a `Abogados`) o configurando un job temporal con `DATABASE_URL`
+> de producción.
 
 ---
 
@@ -225,10 +234,12 @@ Para que MP llegue al webhook en dev, el `.env` está apuntado a una URL de **ng
 
 ### Tier 0 — Riesgos que pueden romper el negocio
 
-- [x] **#1 Adjuntos privados** — parcial. Proxy y publicId implementados. Cloudinary free no entrega `type: authenticated`; postergado para cuando se migre a servidor propio (S3 + signed URLs cortas, o filesystem con auth). El hosting nuevo es un plan del usuario.
-- [ ] **#2 DB de staging** — local y prod comparten Neon. Crear branch de DB en Neon (Settings → Branching), nuevo `DATABASE_URL` en `.env.local` vs Vercel. Considerar `.env.staging` y alias `db:push:prod` con doble confirmación.
-- [ ] **#3 Idempotency en webhook MP** — `src/app/api/payments/webhook/route.ts`. MP reintenta. Agregar `@unique` en `Payment.mpPaymentId` y guard `if (alreadyProcessed) return 200`.
-- [ ] **#4 Apagar fallback confirm-without-payment en prod** — `client/lawyers/[id]/page.tsx:121-127`. Flag env `ALLOW_UNPAID_CONFIRM` que solo viva en `.env.local`. Assert que no esté seteado si `NODE_ENV === "production"`.
+- [x] **#1 Adjuntos privados** — parcial. Proxy y publicId implementados. Cloudinary free no entrega `type: authenticated`; postergado para cuando se migre a servidor propio (S3 + signed URLs cortas, o filesystem con auth).
+- [x] **#2 DB de staging** — Neon branching activado. `.env` local apunta al branch `Abogados`. Vercel sigue en `producción`.
+- [x] **#3 Idempotency en webhook MP** — `Payment.mpPaymentId @unique` + `updateMany` atómico con guard `mpPaymentId: null` + captura de P2002. Commit `65ef05c`.
+- [x] **#4 Confirm-without-payment fallback** — era código muerto. Eliminado. Si MP falla, error legible al usuario. Commit `38e54c2`.
+
+**Tier 0 cerrado el 13/05/2026.** Próximo: Tier 1 (seguridad endurecida) o Tier 3 (rediseño visual).
 
 ### Tier 1 — Seguridad endurecida
 

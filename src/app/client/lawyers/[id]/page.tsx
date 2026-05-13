@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +11,7 @@ import {
   Phone,
   Mail,
   Calendar,
-  CheckCircle,
   ArrowLeft,
-  Video,
   CreditCard,
 } from "lucide-react";
 import Link from "next/link";
@@ -46,7 +43,6 @@ interface Review {
 
 export default function LawyerProfilePage() {
   const { id } = useParams();
-  const { data: session } = useSession();
   const [lawyer, setLawyer] = useState<LawyerProfile | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewRatingFilter, setReviewRatingFilter] = useState<number | "all">("all");
@@ -57,7 +53,6 @@ export default function LawyerProfilePage() {
   const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<any>(null);
   const [error, setError] = useState("");
   const [consultationFee, setConsultationFee] = useState(5000);
 
@@ -98,36 +93,31 @@ export default function LawyerProfilePage() {
 
       const appointment = await res.json();
 
-      // Create Mercado Pago payment preference
+      // Crear preferencia de pago en Mercado Pago
       const paymentRes = await fetch("/api/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ appointmentId: appointment.id }),
       });
 
-      if (paymentRes.ok) {
-        const paymentData = await paymentRes.json();
-        if (paymentData.initPoint) {
-          window.location.href = paymentData.initPoint;
-          return;
-        }
-        if (paymentData.sandboxInitPoint) {
-          window.location.href = paymentData.sandboxInitPoint;
-          return;
-        }
+      if (!paymentRes.ok) {
+        const data = await paymentRes.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            "No se pudo iniciar el pago. Revisá tu conexión e intentá de nuevo."
+        );
       }
 
-      // Fallback: confirm directly if Mercado Pago is not configured
-      const confirmRes = await fetch(`/api/appointments/${appointment.id}/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accessToken: (session as any)?.accessToken || null,
-        }),
-      });
+      const paymentData = await paymentRes.json();
+      const checkoutUrl = paymentData.initPoint || paymentData.sandboxInitPoint;
 
-      const confirmData = await confirmRes.json();
-      setSuccess(confirmData);
+      if (!checkoutUrl) {
+        throw new Error(
+          "El proveedor de pagos no devolvió una URL de checkout. Intentá de nuevo en unos minutos."
+        );
+      }
+
+      window.location.href = checkoutUrl;
     } catch (err: any) {
       setError(err.message || "Error al crear la cita");
     } finally {
@@ -241,38 +231,8 @@ export default function LawyerProfilePage() {
       )}
 
       {/* Booking section */}
-      {success ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-slate-900 mb-2">
-              Cita Confirmada
-            </h2>
-            <p className="text-slate-600 mb-4">{success.message}</p>
-            {success.meetLink && (
-              <a
-                href={success.meetLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-brand-400 hover:to-brand-500 transition-all"
-              >
-                <Video className="w-5 h-5" />
-                Abrir Google Meet
-              </a>
-            )}
-            <div className="mt-4">
-              <Link
-                href="/client/dashboard"
-                className="text-brand-600 font-medium text-sm hover:text-brand-700"
-              >
-                Ir al Dashboard
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="py-6">
+      <Card>
+        <CardContent className="py-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
@@ -359,7 +319,6 @@ export default function LawyerProfilePage() {
             )}
           </CardContent>
         </Card>
-      )}
     </div>
   );
 }

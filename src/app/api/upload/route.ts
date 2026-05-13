@@ -5,7 +5,10 @@ import { v2 as cloudinary } from "cloudinary";
 import { sanitizeFolderName } from "@/lib/validations";
 
 const PUBLIC_UPLOAD_FOLDERS = new Set(["lawyer-applications"]);
-const AUTHENTICATED_UPLOAD_FOLDERS = new Set(["lawyers", "general"]);
+const AUTHENTICATED_UPLOAD_FOLDERS = new Set(["lawyers", "general", "message-attachments"]);
+
+const IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/jpg"]);
+const DOC_MIME = new Set(["application/pdf"]);
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -32,21 +35,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
+    if (folder === "message-attachments") {
+      const role = (session?.user as any)?.role;
+      if (role !== "client" && role !== "lawyer") {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      }
+    }
+
     if (!file) {
       return NextResponse.json({ error: "No se envió archivo" }, { status: 400 });
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
-    if (!allowedTypes.includes(file.type)) {
+    const isMessageAttachment = folder === "message-attachments";
+    const isImage = IMAGE_MIME.has(file.type);
+    const isPdf = DOC_MIME.has(file.type);
+
+    if (isMessageAttachment) {
+      if (!isImage && !isPdf) {
+        return NextResponse.json(
+          { error: "Solo se permiten imágenes (JPG, PNG, WEBP) o PDF" },
+          { status: 400 }
+        );
+      }
+    } else if (!isImage) {
       return NextResponse.json(
         { error: "Solo se permiten imágenes (JPG, PNG, WEBP)" },
         { status: 400 }
       );
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    const maxSize = isMessageAttachment ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "El archivo no puede superar 5MB" },
+        { error: `El archivo no puede superar ${Math.round(maxSize / (1024 * 1024))}MB` },
         { status: 400 }
       );
     }
@@ -54,23 +75,30 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    const resourceType: "image" | "raw" = isPdf ? "raw" : "image";
+
     const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const uploadOptions: any = {
+        folder: `legal-platform/${folder}`,
+        resource_type: resourceType,
+      };
+      if (resourceType === "image") {
+        uploadOptions.allowed_formats = ["jpg", "jpeg", "png", "webp"];
+      }
       cloudinary.uploader
-        .upload_stream(
-          {
-            folder: `legal-platform/${folder}`,
-            resource_type: "image",
-            allowed_formats: ["jpg", "jpeg", "png", "webp"],
-          },
-          (error, result) => {
-            if (error || !result) return reject(error);
-            resolve(result as { secure_url: string });
-          }
-        )
+        .upload_stream(uploadOptions, (error, result) => {
+          if (error || !result) return reject(error);
+          resolve(result as { secure_url: string });
+        })
         .end(buffer);
     });
 
-    return NextResponse.json({ url: uploadResult.secure_url });
+    return NextResponse.json({
+      url: uploadResult.secure_url,
+      type: isPdf ? "pdf" : "image",
+      name: file.name,
+      size: file.size,
+    });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Error al subir archivo" }, { status: 500 });

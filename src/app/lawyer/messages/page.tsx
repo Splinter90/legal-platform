@@ -1,10 +1,18 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Send, ArrowLeft } from "lucide-react";
+import {
+  MessageSquare,
+  Send,
+  ArrowLeft,
+  Paperclip,
+  X,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
 
 interface Message {
@@ -16,6 +24,9 @@ interface Message {
   clientId: string;
   read: boolean;
   createdAt: string;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
+  attachmentName: string | null;
   lawyer: { id: string; firstName: string; lastName: string };
   client: { id: string; name: string; image: string | null };
 }
@@ -26,6 +37,12 @@ interface Conversation {
   lastMessage: string;
   lastDate: string;
   unread: number;
+}
+
+interface PendingAttachment {
+  url: string;
+  type: "image" | "pdf";
+  name: string;
 }
 
 export default function LawyerMessages() {
@@ -39,7 +56,11 @@ export default function LawyerMessages() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [access, setAccess] = useState<any>(null);
   const [accessChecked, setAccessChecked] = useState(false);
 
@@ -99,10 +120,17 @@ export default function LawyerMessages() {
     const convs: Conversation[] = [];
     for (const [clientId, g] of grouped) {
       const last = g.msgs[g.msgs.length - 1];
+      const lastPreview = last.content
+        ? last.content
+        : last.attachmentType === "image"
+        ? "📷 Imagen"
+        : last.attachmentType === "pdf"
+        ? "📎 Archivo"
+        : "";
       convs.push({
         clientId,
         clientName: g.name,
-        lastMessage: last.content,
+        lastMessage: lastPreview,
         lastDate: last.createdAt,
         unread: g.unread,
       });
@@ -126,15 +154,64 @@ export default function LawyerMessages() {
     await fetchMessages(clientId);
   }
 
+  async function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+
+    const isImage = ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type);
+    const isPdf = file.type === "application/pdf";
+    if (!isImage && !isPdf) {
+      setUploadError("Solo imágenes (JPG, PNG, WEBP) o PDF");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("El archivo no puede superar 10MB");
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "message-attachments");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setUploadError(data?.error || "No se pudo subir el archivo");
+        return;
+      }
+      setPendingAttachment({
+        url: data.url,
+        type: isPdf ? "pdf" : "image",
+        name: file.name,
+      });
+    } catch {
+      setUploadError("No se pudo subir el archivo");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedClient) return;
+    if (!selectedClient) return;
+    if (!newMessage.trim() && !pendingAttachment) return;
     setSending(true);
     setSendError(null);
     const res = await fetch("/api/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: newMessage, recipientId: selectedClient }),
+      body: JSON.stringify({
+        content: newMessage,
+        recipientId: selectedClient,
+        attachmentUrl: pendingAttachment?.url,
+        attachmentType: pendingAttachment?.type,
+        attachmentName: pendingAttachment?.name,
+      }),
     });
     if (!res.ok) {
       try {
@@ -147,6 +224,7 @@ export default function LawyerMessages() {
       return;
     }
     setNewMessage("");
+    setPendingAttachment(null);
     setSending(false);
     fetchMessages(selectedClient, false);
   }
@@ -234,18 +312,7 @@ export default function LawyerMessages() {
                 <p className="text-center text-slate-400 text-sm py-8">No hay mensajes aun</p>
               ) : (
                 messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.senderType === "lawyer" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm ${
-                      msg.senderType === "lawyer"
-                        ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white"
-                        : "bg-slate-100 text-slate-900"
-                    }`}>
-                      <p>{msg.content}</p>
-                      <p className={`text-xs mt-1 ${msg.senderType === "lawyer" ? "text-slate-300" : "text-slate-400"}`}>
-                        {new Date(msg.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                  </div>
+                  <MessageBubble key={msg.id} msg={msg} />
                 ))
               )}
               <div ref={messagesEndRef} />
@@ -256,15 +323,49 @@ export default function LawyerMessages() {
                   {sendError}
                 </p>
               )}
-              <div className="flex gap-3">
+              {uploadError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                  {uploadError}
+                </p>
+              )}
+              {pendingAttachment && (
+                <AttachmentPreview
+                  attachment={pendingAttachment}
+                  onRemove={() => setPendingAttachment(null)}
+                />
+              )}
+              <div className="flex gap-2 items-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf"
+                  onChange={handleFilePick}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || sending || !!pendingAttachment}
+                  className="p-2.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Adjuntar archivo o imagen"
+                >
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Paperclip className="w-4 h-4" />
+                  )}
+                </button>
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Escribe un mensaje..."
+                  placeholder={pendingAttachment ? "Agregá un mensaje (opcional)..." : "Escribe un mensaje..."}
                   className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
-                <Button type="submit" disabled={sending || !newMessage.trim()}>
+                <Button
+                  type="submit"
+                  disabled={sending || uploading || (!newMessage.trim() && !pendingAttachment)}
+                >
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
@@ -272,6 +373,97 @@ export default function LawyerMessages() {
           </Card>
         </div>
       )}
+    </div>
+  );
+}
+
+function MessageBubble({ msg }: { msg: Message }) {
+  const isLawyer = msg.senderType === "lawyer";
+  return (
+    <div className={`flex ${isLawyer ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm ${
+          isLawyer
+            ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white"
+            : "bg-slate-100 text-slate-900"
+        }`}
+      >
+        {msg.attachmentUrl && msg.attachmentType === "image" && (
+          <a
+            href={msg.attachmentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mb-2"
+          >
+            <img
+              src={msg.attachmentUrl}
+              alt={msg.attachmentName || "Imagen"}
+              className="rounded-xl max-h-56 w-auto object-cover"
+            />
+          </a>
+        )}
+        {msg.attachmentUrl && msg.attachmentType === "pdf" && (
+          <a
+            href={msg.attachmentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${
+              isLawyer
+                ? "bg-white/10 hover:bg-white/20"
+                : "bg-white hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <FileText className={`w-5 h-5 flex-shrink-0 ${isLawyer ? "text-white" : "text-red-500"}`} />
+            <span className={`text-xs truncate ${isLawyer ? "text-white" : "text-slate-700"}`}>
+              {msg.attachmentName || "Archivo PDF"}
+            </span>
+          </a>
+        )}
+        {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+        <p className={`text-xs mt-1 ${isLawyer ? "text-slate-300" : "text-slate-400"}`}>
+          {new Date(msg.createdAt).toLocaleTimeString("es-AR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AttachmentPreview({
+  attachment,
+  onRemove,
+}: {
+  attachment: PendingAttachment;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+      {attachment.type === "image" ? (
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="w-12 h-12 rounded-lg object-cover"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center">
+          <FileText className="w-6 h-6 text-red-500" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-slate-700 truncate">{attachment.name}</p>
+        <p className="text-[10px] text-slate-400 uppercase">
+          {attachment.type === "image" ? "Imagen" : "PDF"}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 }

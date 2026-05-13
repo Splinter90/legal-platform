@@ -80,9 +80,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { content, recipientId } = await req.json();
+  const { content, recipientId, attachmentUrl, attachmentType, attachmentName } = await req.json();
 
-  if (!content || !content.trim()) {
+  const trimmedContent = typeof content === "string" ? content.trim() : "";
+  const hasAttachment = typeof attachmentUrl === "string" && attachmentUrl.trim().length > 0;
+
+  if (!trimmedContent && !hasAttachment) {
     return NextResponse.json({ error: "El mensaje no puede estar vacío" }, { status: 400 });
   }
 
@@ -90,8 +93,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "recipientId es obligatorio" }, { status: 400 });
   }
 
-  if (content.length > 5000) {
+  if (trimmedContent.length > 5000) {
     return NextResponse.json({ error: "El mensaje no puede superar los 5000 caracteres" }, { status: 400 });
+  }
+
+  if (hasAttachment) {
+    if (attachmentType !== "image" && attachmentType !== "pdf") {
+      return NextResponse.json({ error: "Tipo de adjunto inválido" }, { status: 400 });
+    }
+    try {
+      const parsed = new URL(attachmentUrl);
+      if (parsed.protocol !== "https:") throw new Error("non-https");
+      if (!/cloudinary\.com$/i.test(parsed.hostname) && !/\.cloudinary\.com$/i.test(parsed.hostname)) {
+        throw new Error("untrusted host");
+      }
+    } catch {
+      return NextResponse.json({ error: "URL de adjunto inválida" }, { status: 400 });
+    }
   }
 
   const lawyerId = role === "lawyer" ? userId : recipientId;
@@ -112,16 +130,29 @@ export async function POST(req: NextRequest) {
 
   const message = await prisma.message.create({
     data: {
-      content: content.trim(),
+      content: trimmedContent,
       senderId: userId,
       senderType: role,
       lawyerId,
       clientId,
+      attachmentUrl: hasAttachment ? attachmentUrl : null,
+      attachmentType: hasAttachment ? attachmentType : null,
+      attachmentName: hasAttachment
+        ? (typeof attachmentName === "string" && attachmentName.trim().length > 0
+            ? attachmentName.trim().slice(0, 200)
+            : null)
+        : null,
     },
   });
 
   const senderName = session.user?.name || "Usuario";
-  const preview = content.trim().substring(0, 80);
+  const attachmentLabel = hasAttachment
+    ? attachmentType === "image"
+      ? "📷 Imagen"
+      : "📎 Archivo"
+    : "";
+  const previewBase = trimmedContent.length > 0 ? trimmedContent : attachmentLabel;
+  const preview = previewBase.substring(0, 80);
 
   await prisma.notification.create({
     data: {
@@ -129,7 +160,7 @@ export async function POST(req: NextRequest) {
       userType: role === "lawyer" ? "client" : "lawyer",
       type: "new_message",
       title: "Nuevo mensaje",
-      message: `${senderName}: ${preview}${content.length > 80 ? "..." : ""}`,
+      message: `${senderName}: ${preview}${previewBase.length > 80 ? "..." : ""}`,
       link: role === "lawyer" ? "/client/messages" : "/lawyer/messages",
     },
   });

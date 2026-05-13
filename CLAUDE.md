@@ -7,6 +7,21 @@ para el abogado y panel admin con métricas y comisiones.
 > Este archivo es **el primer lugar que se lee al arrancar una sesión nueva**.
 > Mantenelo actualizado. No incluyas secrets — viven en `.env` (gitignored).
 
+## ⏯️ Última sesión (13/05/2026)
+
+**Commits del día**:
+- `fbd6613` — BookingCalendar mensual con slots disponibles + filtros de reseñas (1-5★) en perfil del abogado + mapa con geolocalización del cliente + marcadores con foto de perfil.
+- `7954140` — Adjuntar imágenes y PDF en mensajes (clip + preview + render inline/pill). Cliente y abogado.
+- `7930e7d` — Este CLAUDE.md como fuente operativa.
+- `3c787b7` → `a3f7a55` — Intento Tier 0 #1 (adjuntos privados con Cloudinary `type: authenticated`). **Plan free de Cloudinary no entrega esos assets**, así que revertimos a `type: upload`. Quedaron implementados: el proxy `/api/messages/[id]/attachment` (con ACL por sesión), `Message.attachmentPublicId` en schema. La privacidad real espera la migración a hosting propio.
+
+**Por dónde seguir**:
+1. Tier 0 #2 (DB de staging en Neon)
+2. Tier 0 #3 (idempotency MP webhook)
+3. Tier 0 #4 (apagar fallback confirm-without-payment en prod)
+
+Ver sección "Roadmap pendiente" más abajo para la lista completa priorizada.
+
 ---
 
 ## Stack
@@ -202,13 +217,82 @@ Para que MP llegue al webhook en dev, el `.env` está apuntado a una URL de **ng
 
 ---
 
-## Pendientes conocidos / cosas a tener en cuenta
+## Roadmap pendiente (orden sugerido)
 
-- **Adjuntos privados de verdad**: cuando se migre el hosting a servidor propio, implementar almacenamiento privado real (S3 con signed URLs cortas, o filesystem con auth). Hoy las URLs de Cloudinary son técnicamente públicas — la única barrera es no conocer el publicId.
-- **DB de staging**: actualmente local y prod comparten Neon. Riesgo: `db:push` desde local puede romper prod.
-- **Reviews**: el cliente puede dejar UNA. No hay edición ni respuesta del abogado todavía.
-- **MP webhook idempotency**: ver `src/app/api/payments/webhook/route.ts`. Verificar que no se procesen pagos duplicados.
-- **Fallback confirm-without-payment**: si MP cae mid-payment, el código confirma la cita sin pago (`/appointments/[id]/confirm`). Útil para dev, peligroso para prod — gatear con env var.
+> Última sesión: 13/05/2026. Próxima vez: arrancar leyendo esto y preguntar al
+> usuario por dónde sigue. **Lista corta y priorizada** del análisis completo
+> que hicimos. Los Tier están ordenados de "más urgente" a "más diferenciador".
+
+### Tier 0 — Riesgos que pueden romper el negocio
+
+- [x] **#1 Adjuntos privados** — parcial. Proxy y publicId implementados. Cloudinary free no entrega `type: authenticated`; postergado para cuando se migre a servidor propio (S3 + signed URLs cortas, o filesystem con auth). El hosting nuevo es un plan del usuario.
+- [ ] **#2 DB de staging** — local y prod comparten Neon. Crear branch de DB en Neon (Settings → Branching), nuevo `DATABASE_URL` en `.env.local` vs Vercel. Considerar `.env.staging` y alias `db:push:prod` con doble confirmación.
+- [ ] **#3 Idempotency en webhook MP** — `src/app/api/payments/webhook/route.ts`. MP reintenta. Agregar `@unique` en `Payment.mpPaymentId` y guard `if (alreadyProcessed) return 200`.
+- [ ] **#4 Apagar fallback confirm-without-payment en prod** — `client/lawyers/[id]/page.tsx:121-127`. Flag env `ALLOW_UNPAID_CONFIRM` que solo viva en `.env.local`. Assert que no esté seteado si `NODE_ENV === "production"`.
+
+### Tier 1 — Seguridad endurecida
+
+- [ ] Headers de seguridad en `next.config.js`: `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options: DENY`, `Referrer-Policy`.
+- [ ] Audit log del admin: tabla `AdminLog (adminId, action, target, ts, ip)`. Loguear cada acción de `/api/admin/*`.
+- [ ] Rate limiting más amplio: agregar en `/api/reviews`, `/api/upload`, `/api/appointments`.
+- [ ] Session timeout del admin: NextAuth default 30d. Bajar a 1h de inactividad solo para `role === "admin"`.
+- [ ] MIME sniffing en uploads con magic bytes (paquete `file-type`).
+- [ ] Reset password seguro del admin: hoy no existe flujo de recuperación.
+
+### Tier 2 — Funcionalidades modernas (alto impacto)
+
+- [ ] **Mensajería real-time** con Server-Sent Events. Hoy hay polling cada 5s en `messages/page.tsx`. Endpoint `/api/messages/stream` + EventSource en el cliente.
+- [ ] **Emails transaccionales** con SMTP ya configurado:
+  - Cita confirmada con `.ics` adjunto
+  - Recordatorio 24h antes (el cron existe, solo crea notif in-app — falta email)
+  - Pedido de reseña post-cita
+  - Suscripción del abogado por vencer en 7 días
+  - Abogado aprobado/rechazado
+- [ ] **Push notifications** (Web Push API + service worker)
+- [ ] **Búsqueda avanzada en `/client/lawyers`**: radio km (slider, ya tenemos haversine), precio máx, idioma, género, rating mínimo, disponibilidad en fecha X.
+- [ ] **Favoritos**: tabla `FavoriteLawyer (clientId, lawyerId)`, botón ❤ en cards y perfil.
+- [ ] **ICS export**: endpoint `/api/appointments/[id]/ics` + botón "Agregar a calendario".
+- [ ] **Plantillas de documentos legales** (el abogado las gestiona): modelo `DocumentTemplate`, librería de poderes/contratos.
+- [ ] **Firma electrónica** (DocuSign o Firmar.online).
+
+### Tier 3 — Diseño moderno
+
+- [ ] Skeleton loaders en vez de spinners (Card, MessageBubble, AppointmentList).
+- [ ] Toast notifications centralizadas (Sonner o Radix Toast). Hoy hay `setSendError` por componente.
+- [ ] Framer Motion para microinteracciones (hoy hay `Reveal` casero).
+- [ ] **Dark mode** real con Tailwind `dark:` + toggle en navbar.
+- [ ] `<Image>` de Next en vez de `<img>` (lawyers-map.tsx, profile pages).
+- [ ] Command palette (Cmd+K) con [cmdk](https://cmdk.paco.me/).
+- [ ] Charts en admin dashboard (Recharts o Tremor): revenue mensual, citas por status, specialties más buscadas.
+- [ ] Empty states con ilustraciones (unDraw, Storyset).
+- [ ] Mobile bottom-nav para `/client/*` y `/lawyer/*`.
+
+### Tier 4 — Modernización profunda
+
+- [ ] PWA instalable (manifest + service worker).
+- [ ] Modo offline básico.
+- [ ] Presence real-time (cliente ve "Abogado en línea • escribiendo...").
+- [ ] E2E con Playwright (flujo reserva + pago sandbox, mensaje con adjunto).
+- [ ] Storybook para `components/ui/`.
+
+### Tier 5 — Accesibilidad y legal (AR)
+
+- [ ] Cookie banner (Ley 25.326).
+- [ ] WCAG 2.1 AA: contrastes, aria-label en iconos, focus visible.
+- [ ] Export de datos del cliente: `/api/clients/me/export` → ZIP.
+- [ ] "Eliminar mi cuenta" con soft-delete + scrubbing PII.
+- [ ] Verificación automática de matrícula contra padrones de colegios (CPACF, CALP).
+
+### Tier 6 — Diferenciación / "wow"
+
+- [ ] IA para clasificar consulta inicial → sugiere especialidades + abogados (Claude API, `claude-haiku-4-5`).
+- [ ] Transcripción post-Meet con resumen (Whisper + GPT). Premium tier.
+- [ ] Chatbot legal de pre-orientación en la landing pública.
+
+### Otros pendientes menores (sin tier asignado)
+
+- [ ] Reviews: edición + respuesta del abogado.
+- [ ] CLAUDE.md: cuando confirme que ya no hay mensajes con `attachmentUrl` legacy en prod, quitar el fallback en `src/app/api/messages/[id]/attachment/route.ts:44-49`.
 
 ---
 

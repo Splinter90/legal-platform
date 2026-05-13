@@ -5,6 +5,7 @@ import { Stars } from "@/components/ui/stars";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Search, MapPin, Filter, ArrowRight, User } from "lucide-react";
+import { SkeletonList } from "@/components/ui/skeleton";
 
 interface Lawyer {
   id: string;
@@ -141,9 +142,7 @@ export default function ClientLawyers() {
 
       {/* Results */}
       {loading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-        </div>
+<SkeletonList rows={6} />
       ) : lawyers.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">

@@ -19,6 +19,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SkeletonList } from "@/components/ui/skeleton";
 
 interface Lawyer {
   id: string;
@@ -220,9 +221,7 @@ export default function AdminLawyers() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-        </div>
+<SkeletonList rows={6} />
       ) : (() => {
         const q = search.trim().toLowerCase();
         const visible = q

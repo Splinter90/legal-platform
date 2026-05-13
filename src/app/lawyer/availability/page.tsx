@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { SkeletonList } from "@/components/ui/skeleton";
 
 const DAY_NAMES = ["Domingo", "Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"];
 
@@ -88,9 +89,7 @@ export default function AvailabilityPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-10 h-10 text-brand-600 animate-spin" />
-      </div>
+<SkeletonList rows={4} />
     );
   }
 

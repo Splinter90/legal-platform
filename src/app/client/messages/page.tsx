@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SkeletonMessageList } from "@/components/ui/skeleton";
 
 interface Message {
   id: string;
@@ -223,9 +224,7 @@ export default function ClientMessages() {
 
   if (loading && !selectedLawyer) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<div className="max-w-2xl"><SkeletonMessageList rows={4} /></div>
     );
   }
 

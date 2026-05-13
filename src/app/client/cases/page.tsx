@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/utils";
 import { FileText, Clock, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { SkeletonList } from "@/components/ui/skeleton";
 
 interface CaseItem {
   id: string;
@@ -42,9 +43,7 @@ export default function ClientCases() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonList rows={5} />
     );
   }
 

@@ -2,13 +2,12 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { MapPin, LocateFixed, AlertCircle } from "lucide-react";
+import { SkeletonMap } from "@/components/ui/skeleton";
 
 const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
   ssr: false,
   loading: () => (
-    <div className="bg-slate-100 rounded-2xl flex items-center justify-center h-[600px]">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-    </div>
+<SkeletonMap />
   ),
 });
 
@@ -143,9 +142,7 @@ export default function ClientMapPage() {
       </div>
 
       {loading ? (
-        <div className="bg-slate-100 rounded-2xl flex items-center justify-center h-[600px]">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-        </div>
+<SkeletonMap />
       ) : filtered.length === 0 ? (
         <div className="bg-slate-100 rounded-2xl flex items-center justify-center h-[600px]">
           <div className="text-center">

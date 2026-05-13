@@ -5,15 +5,14 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapPin, ArrowRight, Sparkles, Lock } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Reveal } from "@/components/ui/reveal";
 import { Button } from "@/components/ui/button";
 
 const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
   ssr: false,
   loading: () => (
-    <div className="bg-slate-900/60 border border-white/10 rounded-3xl flex items-center justify-center h-[600px]">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-400" />
-    </div>
+<Skeleton className="h-[600px] rounded-3xl border border-white/10 bg-slate-900/60" />
   ),
 });
 
@@ -119,9 +118,7 @@ export default function PublicMapPage() {
           <Reveal delay={120}>
             <div className="relative rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur p-2 overflow-hidden shadow-2xl">
               {status === "loading" || (isAuth && loading) ? (
-                <div className="flex items-center justify-center h-[600px]">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-400" />
-                </div>
+<Skeleton className="h-[600px] rounded-3xl border border-white/10 bg-slate-900/60" />
               ) : !isAuth ? (
                 // Locked map: blurred Argentina view + interactive overlay
                 <div

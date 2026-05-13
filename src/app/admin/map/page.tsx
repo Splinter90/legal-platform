@@ -4,13 +4,12 @@ import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Users, Star } from "lucide-react";
+import { SkeletonMap } from "@/components/ui/skeleton";
 
 const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
   ssr: false,
   loading: () => (
-    <div className="bg-slate-100 rounded-2xl flex items-center justify-center h-[600px]">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-    </div>
+<SkeletonMap />
   ),
 });
 
@@ -82,9 +81,7 @@ export default function AdminMapPage() {
       </div>
 
       {loading ? (
-        <div className="bg-slate-100 rounded-2xl flex items-center justify-center h-[600px]">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-        </div>
+<SkeletonMap />
       ) : (
         <LawyersMap lawyers={lawyers} showLink={false} height="600px" />
       )}

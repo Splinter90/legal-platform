@@ -11,13 +11,12 @@ import { PhoneInputAR } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { Save, MapPin, CreditCard, User, Crown, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton, SkeletonProfile } from "@/components/ui/skeleton";
 
 const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
   ssr: false,
   loading: () => (
-    <div className="bg-slate-100 rounded-2xl flex items-center justify-center h-[250px]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500" />
-    </div>
+<Skeleton className="h-[250px] rounded-2xl" />
   ),
 });
 
@@ -100,9 +99,7 @@ export default function LawyerProfile() {
 
   if (!lawyer) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonProfile />
     );
   }
 

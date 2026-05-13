@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Reveal } from "@/components/ui/reveal";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { SkeletonDashboard } from "@/components/ui/skeleton";
 import Link from "next/link";
 import {
   Calendar,
@@ -26,9 +27,7 @@ export default function ClientDashboard() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonDashboard />
     );
   }
 

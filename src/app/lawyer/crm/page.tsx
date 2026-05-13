@@ -10,6 +10,7 @@ import { PhoneInputAR } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { isOptionalPhoneARValid } from "@/lib/phone";
 import { toast } from "sonner";
+import { SkeletonList } from "@/components/ui/skeleton";
 import {
   Plus,
   Search,
@@ -174,9 +175,7 @@ export default function LawyerCRM() {
 
   if (!accessChecked) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonList rows={5} />
     );
   }
 
@@ -235,9 +234,7 @@ export default function LawyerCRM() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-        </div>
+<SkeletonList rows={4} />
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">

@@ -16,6 +16,7 @@ import {
   Lock,
   ShieldCheck,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Lawyer {
   id: string;
@@ -168,8 +169,10 @@ export default function PublicLawyersPage() {
       <section className="bg-gradient-to-b from-slate-50 to-white text-slate-900 px-4 sm:px-6 py-16 sm:py-20">
         <div className="max-w-7xl mx-auto">
           {status === "loading" ? (
-            <div className="flex items-center justify-center h-48">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
+<div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-2xl bg-slate-800/40 border border-white/5" />
+              ))}
             </div>
           ) : !isAuth ? (
             // Login wall for anonymous users
@@ -289,8 +292,10 @@ export default function PublicLawyersPage() {
               </Reveal>
 
               {loading ? (
-                <div className="flex items-center justify-center h-48">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
+<div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-24 rounded-2xl bg-slate-800/40 border border-white/5" />
+                  ))}
                 </div>
               ) : lawyers.length === 0 ? (
                 <div className="rounded-3xl border border-slate-200 bg-white py-20 text-center">

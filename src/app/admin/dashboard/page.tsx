@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Reveal } from "@/components/ui/reveal";
 import { formatCurrency } from "@/lib/utils";
 import { calculateMPBreakdown, type MPAccreditationScheme } from "@/lib/mp-fees";
+import { SkeletonDashboard } from "@/components/ui/skeleton";
 import {
   Scale,
   Users,
@@ -61,9 +62,7 @@ export default function AdminDashboard() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonDashboard />
     );
   }
 

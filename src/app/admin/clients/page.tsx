@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { Users, Mail, Phone, Calendar, Star, Search, Scale } from "lucide-react";
+import { SkeletonList } from "@/components/ui/skeleton";
 
 interface ClientLawyer {
   id: string;
@@ -78,9 +79,7 @@ export default function AdminClients() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonList rows={6} />
     );
   }
 

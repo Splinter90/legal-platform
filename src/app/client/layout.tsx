@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { SkeletonAuthCheck } from "@/components/ui/skeleton";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -16,11 +17,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [session, status, router]);
 
   if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
-    );
+    return <SkeletonAuthCheck />;
   }
 
   if ((session?.user as any)?.role !== "client") return null;

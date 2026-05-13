@@ -6,6 +6,7 @@ import { Stars } from "@/components/ui/stars";
 import { Reveal } from "@/components/ui/reveal";
 import { OnboardingStepper } from "@/components/lawyer/onboarding-stepper";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { SkeletonDashboard } from "@/components/ui/skeleton";
 import {
   Calendar,
   DollarSign,
@@ -30,9 +31,7 @@ export default function LawyerDashboard() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500" />
-      </div>
+<SkeletonDashboard />
     );
   }
 

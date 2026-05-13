@@ -181,16 +181,28 @@ Plantilla: `.env.example`. Real local: `.env` (gitignored). En Vercel: replicarl
 
 ## Cuentas de prueba (seed)
 
+> ⚠️ **Importante**: clientes y abogados son **Google-only** en login. Las
+> passwords del seed existen en la DB pero el formulario de login no las
+> usa (solo botón "Continuar con Google"). Para testear hay que loguearse
+> con cuentas Gmail reales registradas como test users en Google Cloud
+> Console del owner. Solo el admin usa user+password.
+
 Generadas por `npm run db:seed`:
 
-| Rol | User / Email | Password |
+| Rol | Identidad en DB | Cómo se loguea |
 |---|---|---|
-| Admin | `ADMIN` | `123` |
-| Cliente | `cliente@test.com` | `cliente123` |
-| Abogado | `abogado@test.com` (María González, CABA, rating 4.8) | `abogado123` |
-| Abogado | `abogado2@test.com` (Carlos Rodríguez, La Plata, rating 4.5) | `abogado123` |
+| Admin | username `ADMIN` / pass `123` | Form `/login` (única ruta password) |
+| Cliente | email `cliente@test.com` | **No usable** sin Google. Sirve solo para data fixture. |
+| Abogado | `abogado@test.com` (María González, CABA, rating 4.8) | Idem. |
+| Abogado | `abogado2@test.com` (Carlos Rodríguez, La Plata, rating 4.5) | Idem. |
 
-Ambos abogados arrancan con `status=approved` y suscripción activa 60 días.
+**Para testear flows reales** (reservas, mensajes, pagos): usar cuentas Gmail
+del owner agregadas como **Test users** en el OAuth Consent Screen de Google
+Cloud (project del `GOOGLE_CLIENT_ID` actual). Cada login Google crea o
+matchea un `Client` por email — si no existe, se crea automáticamente.
+
+Ambos abogados del seed arrancan con `status=approved` y suscripción activa
+60 días.
 
 ---
 

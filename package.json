@@ -26,6 +26,7 @@
     "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "framer-motion": "^12.38.0",
     "googleapis": "^171.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.378.0",

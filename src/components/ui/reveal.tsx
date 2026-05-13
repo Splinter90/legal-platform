@@ -1,40 +1,44 @@
 "use client";
-import { useEffect, useRef, useState, HTMLAttributes } from "react";
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-interface RevealProps extends HTMLAttributes<HTMLDivElement> {
+interface RevealProps extends Omit<HTMLMotionProps<"div">, "ref"> {
   delay?: number;
   as?: "div" | "section" | "article" | "li";
 }
 
-export function Reveal({ className, delay = 0, as: Tag = "div", style, ...props }: RevealProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+export function Reveal({
+  className,
+  delay = 0,
+  as = "div",
+  children,
+  ...props
+}: RevealProps) {
+  const reduceMotion = useReducedMotion();
+  const MotionTag = motion[as] as typeof motion.div;
 
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            setVisible(true);
-            obs.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.12 }
+  if (reduceMotion) {
+    return (
+      <MotionTag className={cn(className)} {...props}>
+        {children}
+      </MotionTag>
     );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, []);
+  }
 
   return (
-    <Tag
-      ref={ref as any}
-      className={cn("reveal", visible && "is-visible", className)}
-      style={{ transitionDelay: `${delay}ms`, ...style }}
-      {...(props as any)}
-    />
+    <MotionTag
+      className={cn(className)}
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.12, margin: "0px 0px -10% 0px" }}
+      transition={{
+        duration: 0.55,
+        ease: [0.22, 1, 0.36, 1],
+        delay: delay / 1000,
+      }}
+      {...props}
+    >
+      {children}
+    </MotionTag>
   );
 }

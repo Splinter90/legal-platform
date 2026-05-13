@@ -202,7 +202,7 @@ model Payment {
   platformFee     Float    @default(0)
   lawyerAmount    Float    @default(0)
   status          String   @default("pending")
-  mpPaymentId     String?
+  mpPaymentId     String?  @unique
   mpPreferenceId  String?
   mpMerchantOrder String?
   createdAt       DateTime @default(now())
@@ -212,7 +212,6 @@ model Payment {
   lawyer          Lawyer?      @relation(fields: [lawyerId], references: [id])
   client          Client?      @relation(fields: [clientId], references: [id])
 
-  @@index([mpPaymentId])
   @@index([appointmentId, status])
   @@index([lawyerId, type, status])
 }

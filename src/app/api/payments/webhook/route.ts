@@ -87,29 +87,46 @@ export async function POST(req: NextRequest) {
 async function handleAppointmentPayment(externalRef: string, status: string, mpPaymentId: string) {
   const appointmentId = externalRef.replace("appointment:", "");
 
-  const alreadyProcessed = await prisma.payment.findFirst({
+  const alreadyProcessed = await prisma.payment.findUnique({
     where: { mpPaymentId },
   });
-  if (alreadyProcessed) return;
+  if (alreadyProcessed) {
+    console.log("[mp-webhook] already processed", { mpPaymentId, appointmentId });
+    return;
+  }
 
   const payment = await prisma.payment.findFirst({
     where: { appointmentId, status: "pending" },
   });
-
   if (!payment) return;
 
-  const existingCompleted = await prisma.payment.findFirst({
-    where: { appointmentId, status: "completed" },
-  });
-  if (existingCompleted) return;
+  const nextStatus =
+    status === "approved" ? "completed" : status === "rejected" ? "failed" : status;
 
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: status === "approved" ? "completed" : status === "rejected" ? "failed" : status,
+  let claimed: { count: number };
+  try {
+    claimed = await prisma.payment.updateMany({
+      where: { id: payment.id, mpPaymentId: null },
+      data: { status: nextStatus, mpPaymentId },
+    });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      console.log("[mp-webhook] race condition resolved by DB unique constraint", {
+        mpPaymentId,
+        appointmentId,
+      });
+      return;
+    }
+    throw e;
+  }
+
+  if (claimed.count === 0) {
+    console.log("[mp-webhook] payment ya fue reclamado por un evento concurrente", {
       mpPaymentId,
-    },
-  });
+      appointmentId,
+    });
+    return;
+  }
 
   if (status === "approved") {
     const appointment = await prisma.appointment.findUnique({
@@ -208,10 +225,13 @@ async function handleAppointmentPayment(externalRef: string, status: string, mpP
 async function handleSubscriptionPayment(externalRef: string, status: string, mpPaymentId: string) {
   const lawyerId = externalRef.replace("subscription:", "");
 
-  const alreadyProcessed = await prisma.payment.findFirst({
-    where: { mpPaymentId, type: "subscription" },
+  const alreadyProcessed = await prisma.payment.findUnique({
+    where: { mpPaymentId },
   });
-  if (alreadyProcessed) return;
+  if (alreadyProcessed) {
+    console.log("[mp-webhook] subscription already processed", { mpPaymentId, lawyerId });
+    return;
+  }
 
   const payment = await prisma.payment.findFirst({
     where: {
@@ -221,16 +241,35 @@ async function handleSubscriptionPayment(externalRef: string, status: string, mp
     },
     orderBy: { createdAt: "desc" },
   });
-
   if (!payment) return;
 
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: status === "approved" ? "completed" : status === "rejected" ? "failed" : status,
+  const nextStatus =
+    status === "approved" ? "completed" : status === "rejected" ? "failed" : status;
+
+  let claimed: { count: number };
+  try {
+    claimed = await prisma.payment.updateMany({
+      where: { id: payment.id, mpPaymentId: null },
+      data: { status: nextStatus, mpPaymentId },
+    });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      console.log("[mp-webhook] subscription race condition resolved by DB unique constraint", {
+        mpPaymentId,
+        lawyerId,
+      });
+      return;
+    }
+    throw e;
+  }
+
+  if (claimed.count === 0) {
+    console.log("[mp-webhook] subscription payment ya fue reclamado por un evento concurrente", {
       mpPaymentId,
-    },
-  });
+      lawyerId,
+    });
+    return;
+  }
 
   if (status === "approved") {
     const lawyer = await prisma.lawyer.findUnique({ where: { id: lawyerId } });

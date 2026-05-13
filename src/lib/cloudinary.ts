@@ -16,9 +16,7 @@ export function signedMessageAttachmentUrl(
   const resourceType = attachmentType === "pdf" ? "raw" : "image";
 
   return cloudinary.url(publicId, {
-    type: "authenticated",
     resource_type: resourceType,
-    sign_url: true,
     secure: true,
     ...(options.forceDownload ? { flags: "attachment" } : {}),
   });

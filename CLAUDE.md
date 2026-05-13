@@ -92,8 +92,8 @@ Middleware en `src/middleware.ts` exige rol matching:
 - **Pagos**: `/api/payments` (preference), `/callback`, `/webhook` (firmado), `/subscription`
 - **Slots**: `/api/lawyers/[id]/slots?days=30` — devuelve slots disponibles para el calendario
 - **Mensajes**: `/api/messages` (GET conversación, POST acepta `attachmentUrl/Type/Name`)
-- **Upload**: `/api/upload` — carpetas autorizadas: `lawyer-applications` (pública), `lawyers`/`general`/`message-attachments` (auth). PDF solo en `message-attachments` (10MB), imágenes 5MB. `message-attachments` sube con `type: "authenticated"` (no público) y devuelve `publicId`.
-- **Adjunto de mensaje (proxy seguro)**: `/api/messages/[id]/attachment` — verifica sesión + que el usuario sea cliente o abogado del mensaje, firma URL Cloudinary y redirige. `?download=1` fuerza descarga (Content-Disposition: attachment).
+- **Upload**: `/api/upload` — carpetas autorizadas: `lawyer-applications` (pública), `lawyers`/`general`/`message-attachments` (auth). PDF solo en `message-attachments` (10MB), imágenes 5MB. **Nota**: hoy sube como `type: "upload"` (técnicamente público) porque Cloudinary plan free no entrega bien los `authenticated`. La privacidad real se va a resolver cuando se migre a servidor propio. Mientras tanto el publicId es aleatorio y nunca aparece en la API pública.
+- **Adjunto de mensaje (proxy)**: `/api/messages/[id]/attachment` — verifica sesión + que el usuario sea cliente o abogado del mensaje, y redirige a la URL de Cloudinary. Da una capa de control de acceso (hay que estar logueado y ser parte del chat para obtener la URL), aunque no impide que la URL sea reutilizada luego. `?download=1` fuerza descarga.
 - **Reviews**: `/api/reviews` — POST exige una `Appointment.status === "completed"` y unicidad por par
 - **Notificaciones**: `/api/notifications`
 - **Geo**: `/api/geocode/search`, `/api/lawyers/map`
@@ -132,7 +132,7 @@ Middleware en `src/middleware.ts` exige rol matching:
 ### Sesión 13/05/2026 (hoy — pusheada)
 - **Commit `fbd6613`**: BookingCalendar (mes con slots disponibles) + filtros de reseñas (1-5★, recientes/mejor/peor) + mapa pide geolocalización del cliente y ordena por cercanía + marcadores usan foto de perfil del abogado.
 - **Commit `7954140`**: adjuntos en mensajes — imágenes y PDF (hasta 10MB) vía Cloudinary, `Message.attachmentUrl/Type/Name`, UI con clip + preview + render inline para imágenes / pill descargable para PDFs. Espejado en cliente y abogado.
-- **Tier 0 #1 (privacidad de adjuntos)**: uploads de mensajes ahora con `type: "authenticated"` (no público). Schema agrega `attachmentPublicId`. Nuevo endpoint `/api/messages/[id]/attachment` que firma URL Cloudinary y redirige. Mensajes viejos con `attachmentUrl` siguen funcionando vía fallback en el proxy.
+- **Tier 0 #1 (parcial)**: schema agrega `attachmentPublicId`, endpoint proxy `/api/messages/[id]/attachment` con ACL, UI usa el proxy. **Pero** `type: "authenticated"` no funcionó en el plan free de Cloudinary, así que volvimos a `type: "upload"`. La privacidad real queda para cuando se migre a servidor propio.
 
 ---
 
@@ -204,6 +204,7 @@ Para que MP llegue al webhook en dev, el `.env` está apuntado a una URL de **ng
 
 ## Pendientes conocidos / cosas a tener en cuenta
 
+- **Adjuntos privados de verdad**: cuando se migre el hosting a servidor propio, implementar almacenamiento privado real (S3 con signed URLs cortas, o filesystem con auth). Hoy las URLs de Cloudinary son técnicamente públicas — la única barrera es no conocer el publicId.
 - **DB de staging**: actualmente local y prod comparten Neon. Riesgo: `db:push` desde local puede romper prod.
 - **Reviews**: el cliente puede dejar UNA. No hay edición ni respuesta del abogado todavía.
 - **MP webhook idempotency**: ver `src/app/api/payments/webhook/route.ts`. Verificar que no se procesen pagos duplicados.

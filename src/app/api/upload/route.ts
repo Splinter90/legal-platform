@@ -76,9 +76,6 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const resourceType: "image" | "raw" = isPdf ? "raw" : "image";
-    const deliveryType: "upload" | "authenticated" = isMessageAttachment
-      ? "authenticated"
-      : "upload";
 
     const uploadResult = await new Promise<{
       secure_url: string;
@@ -88,7 +85,6 @@ export async function POST(req: NextRequest) {
       const uploadOptions: any = {
         folder: `legal-platform/${folder}`,
         resource_type: resourceType,
-        type: deliveryType,
       };
       if (resourceType === "image") {
         uploadOptions.allowed_formats = ["jpg", "jpeg", "png", "webp"];
@@ -102,23 +98,15 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
-      url: isMessageAttachment ? null : uploadResult.secure_url,
+      url: uploadResult.secure_url,
       publicId: uploadResult.public_id,
       resourceType: uploadResult.resource_type,
       type: isPdf ? "pdf" : "image",
       name: file.name,
       size: file.size,
     });
-  } catch (error: any) {
-    const detail =
-      error?.message ||
-      error?.error?.message ||
-      (typeof error === "string" ? error : null) ||
-      "desconocido";
+  } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: `Error al subir archivo: ${detail}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al subir archivo" }, { status: 500 });
   }
 }

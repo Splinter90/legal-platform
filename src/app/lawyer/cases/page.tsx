@@ -1,11 +1,12 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { formatDateTime } from "@/lib/utils";
-import { FileText, Clock, CheckCircle, AlertCircle, Loader2, Edit2 } from "lucide-react";
+import { FileText, Edit2, MessageSquare, Trash2 } from "lucide-react";
 import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
 import { SkeletonList } from "@/components/ui/skeleton";
 
@@ -19,7 +20,7 @@ interface CaseItem {
   appointment: {
     id: string;
     dateTime: string;
-    client: { name: string; email: string };
+    client: { id: string; name: string; email: string };
     notes: string | null;
   };
 }
@@ -78,6 +79,17 @@ export default function LawyerCases() {
     });
     setSaving(false);
     setEditModal(null);
+    fetchCases();
+  }
+
+  async function deleteCase(id: string, clientName: string) {
+    if (!confirm(`¿Eliminar el caso resuelto de ${clientName}? Esta acción no se puede deshacer.`)) return;
+    const res = await fetch(`/api/cases?id=${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "No se pudo eliminar");
+      return;
+    }
     fetchCases();
   }
 
@@ -163,6 +175,13 @@ export default function LawyerCases() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={s.variant}>{s.label}</Badge>
+                      <Link
+                        href={`/lawyer/messages?with=${c.appointment.client.id}&name=${encodeURIComponent(c.appointment.client.name)}`}
+                        title="Enviar mensaje"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-brand-600 hover:bg-brand-50 transition-colors"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </Link>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -175,6 +194,17 @@ export default function LawyerCases() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
+                      {c.status === "resolved" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteCase(c.id, c.appointment.client.name)}
+                          title="Eliminar caso resuelto"
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
 

@@ -14,10 +14,15 @@ import {
   MessageSquare,
   Star,
   Clock,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { signIn } from "next-auth/react";
 
 export default function LawyerDashboard() {
   const [data, setData] = useState<any>(null);
+  const [renewing, setRenewing] = useState(false);
 
   const reload = useCallback(() => {
     fetch("/api/lawyers/dashboard")
@@ -28,6 +33,22 @@ export default function LawyerDashboard() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  async function handleRenew() {
+    setRenewing(true);
+    try {
+      const res = await fetch("/api/payments/subscription", { method: "POST" });
+      const json = await res.json();
+      const url = json.initPoint || json.sandboxInitPoint;
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setRenewing(false);
+  }
 
   if (!data) {
     return (
@@ -88,6 +109,68 @@ export default function LawyerDashboard() {
         </p>
       </Reveal>
 
+      {(() => {
+        const paidUntil = data.lawyer?.subscriptionPaidUntil
+          ? new Date(data.lawyer.subscriptionPaidUntil)
+          : null;
+        if (!paidUntil) return null;
+        const now = new Date();
+        const msInDay = 24 * 60 * 60 * 1000;
+        const daysLeft = Math.ceil((paidUntil.getTime() - now.getTime()) / msInDay);
+        if (data.lawyer.subscriptionStatus !== "active") return null;
+        if (daysLeft < 0 || daysLeft > 7) return null;
+        return (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900">
+                  {daysLeft === 0
+                    ? "Tu suscripción vence hoy"
+                    : daysLeft === 1
+                    ? "Tu suscripción vence mañana"
+                    : `Tu suscripción vence en ${daysLeft} días`}
+                </p>
+                <p className="text-sm text-amber-700">
+                  Renová ahora para seguir apareciendo en la plataforma y recibir reservas.
+                </p>
+              </div>
+            </div>
+            <Button onClick={handleRenew} disabled={renewing} className="flex-shrink-0">
+              <CreditCard className="w-4 h-4 mr-2" />
+              {renewing ? "Procesando..." : "Renovar"}
+            </Button>
+          </div>
+        );
+      })()}
+
+      {data.lawyer && data.lawyer.googleCalendarConnected === false && (
+        <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-5 h-5 text-sky-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-sky-900">
+                Conectá tu Google Calendar
+              </p>
+              <p className="text-sm text-sky-700">
+                Las citas que reserven tus clientes se van a agendar automáticamente en tu calendario.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => signIn("google", { callbackUrl: "/lawyer/dashboard" })}
+            className="flex-shrink-0"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Conectar
+          </Button>
+        </div>
+      )}
+
       {data.access && <OnboardingStepper access={data.access} onChanged={reload} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8">
@@ -98,9 +181,9 @@ export default function LawyerDashboard() {
                 <div className={`p-3 rounded-2xl ${stat.bg} flex-shrink-0`}>
                   <div className={stat.color}>{stat.icon}</div>
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm text-slate-500 truncate">{stat.label}</p>
-                  <p className="text-2xl font-extrabold text-slate-900">
+                  <p className="text-xl sm:text-2xl font-extrabold text-slate-900 break-words leading-tight">
                     {stat.value}
                   </p>
                 </div>
@@ -109,6 +192,44 @@ export default function LawyerDashboard() {
           </Reveal>
         ))}
       </div>
+
+      <Reveal className="mb-6">
+        <Card>
+          <CardContent className="py-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-emerald-600" />
+              Ingresos por Cliente
+            </h3>
+            {(!data.earningsByClient || data.earningsByClient.length === 0) ? (
+              <div className="text-center py-6">
+                <DollarSign className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-500 text-sm">Todavía no hay pagos completados</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {data.earningsByClient.map((row: any) => (
+                  <div
+                    key={row.clientId}
+                    className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {row.clientName}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {row.appointments} {row.appointments === 1 ? "consulta" : "consultas"}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold text-emerald-600 ml-4 whitespace-nowrap">
+                      {formatCurrency(row.total)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </Reveal>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Reveal>

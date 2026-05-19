@@ -44,7 +44,7 @@ export function isValidLawyerStatus(status: string): status is LawyerStatus {
   return (VALID_LAWYER_STATUSES as readonly string[]).includes(status);
 }
 
-const VALID_CASE_STATUSES = ["initiated", "in_progress", "awaiting_documents", "in_review", "resolved", "closed"] as const;
+const VALID_CASE_STATUSES = ["initiated", "in_progress", "waiting_docs", "in_court", "resolved"] as const;
 export type CaseStatus = typeof VALID_CASE_STATUSES[number];
 
 export function isValidCaseStatus(status: string): status is CaseStatus {

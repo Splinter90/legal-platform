@@ -46,12 +46,26 @@ export async function PUT(req: NextRequest) {
     );
   }
 
-  const allowedFields = ["phone", "narrative", "experience", "address", "cbuAlias", "profilePhoto"];
+  const allowedFields = ["phone", "narrative", "experience", "address", "cbuAlias", "profilePhoto", "specialties"];
   const updateData: Record<string, any> = {};
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
       updateData[field] = body[field];
     }
+  }
+
+  if (typeof updateData.specialties === "string") {
+    const cleaned = updateData.specialties
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length > 0);
+    if (cleaned.length === 0) {
+      return NextResponse.json(
+        { error: "Debés seleccionar al menos una especialidad" },
+        { status: 400 }
+      );
+    }
+    updateData.specialties = Array.from(new Set(cleaned)).join(", ");
   }
 
   const hasExplicitCoords =

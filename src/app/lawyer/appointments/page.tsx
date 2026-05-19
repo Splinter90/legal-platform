@@ -16,6 +16,7 @@ import {
   FileText,
   MessageSquare,
   User,
+  Trash2,
 } from "lucide-react";
 
 interface Appointment {
@@ -64,6 +65,17 @@ export default function LawyerAppointments() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
+    fetchAppointments();
+  }
+
+  async function deleteAppointment(id: string, clientName: string) {
+    if (!confirm(`¿Eliminar la cita con ${clientName} de tu panel? La cita queda en el historial pero no la verás más acá.`)) return;
+    const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "No se pudo eliminar");
+      return;
+    }
     fetchAppointments();
   }
 
@@ -273,6 +285,17 @@ export default function LawyerAppointments() {
                     >
                       <FileText className="w-4 h-4 mr-1" />
                       {apt.caseTracking ? "Editar Tramite" : "Crear Tramite"}
+                    </Button>
+                  )}
+                  {(apt.status === "completed" || apt.status === "cancelled") && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteAppointment(apt.id, apt.client.name)}
+                      title="Eliminar de mi panel"
+                      className="text-red-600 hover:bg-red-50 ml-auto"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
                 </div>

@@ -183,3 +183,37 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user as any).role !== "lawyer") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const lawyerId = (session.user as any).id;
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "ID es obligatorio" }, { status: 400 });
+  }
+
+  const caseTracking = await prisma.caseTracking.findUnique({
+    where: { id },
+    include: { appointment: { select: { lawyerId: true } } },
+  });
+
+  if (!caseTracking || caseTracking.appointment.lawyerId !== lawyerId) {
+    return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  }
+
+  if (caseTracking.status !== "resolved") {
+    return NextResponse.json(
+      { error: "Solo se pueden eliminar casos resueltos" },
+      { status: 400 }
+    );
+  }
+
+  await prisma.caseTracking.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

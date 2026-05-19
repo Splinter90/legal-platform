@@ -12,7 +12,7 @@ export async function GET() {
 
   const lawyerId = (session.user as any).id;
 
-  const [lawyer, appointments, crmClientsCount, reviews, unreadMessages, totalEarnings] =
+  const [lawyer, appointments, crmClientsCount, reviews, unreadMessages, totalEarnings, earningsByClientRaw] =
     await Promise.all([
       prisma.lawyer.findUnique({
         where: { id: lawyerId },
@@ -32,6 +32,7 @@ export async function GET() {
           reviewCount: true,
           subscriptionStatus: true,
           subscriptionPaidUntil: true,
+          googleRefreshToken: true,
         },
       }),
       prisma.appointment.findMany({
@@ -57,6 +58,12 @@ export async function GET() {
         where: { lawyerId, paymentStatus: "completed" },
         _sum: { lawyerAmount: true },
       }),
+      prisma.appointment.groupBy({
+        by: ["clientId"],
+        where: { lawyerId, paymentStatus: "completed" },
+        _sum: { lawyerAmount: true },
+        _count: { _all: true },
+      }),
     ]);
 
   if (!lawyer) {
@@ -65,13 +72,38 @@ export async function GET() {
 
   const access = deriveAccess(lawyer);
 
+  const clientIds = earningsByClientRaw.map((g) => g.clientId);
+  const clientsInfo = clientIds.length
+    ? await prisma.client.findMany({
+        where: { id: { in: clientIds } },
+        select: { id: true, name: true, email: true },
+      })
+    : [];
+  const clientById = new Map(clientsInfo.map((c) => [c.id, c]));
+
+  const earningsByClient = earningsByClientRaw
+    .map((g) => ({
+      clientId: g.clientId,
+      clientName: clientById.get(g.clientId)?.name || "Cliente",
+      clientEmail: clientById.get(g.clientId)?.email || null,
+      total: g._sum.lawyerAmount || 0,
+      appointments: g._count._all,
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const { googleRefreshToken, ...lawyerSafe } = lawyer;
+
   return NextResponse.json({
-    lawyer,
+    lawyer: {
+      ...lawyerSafe,
+      googleCalendarConnected: Boolean(googleRefreshToken),
+    },
     access,
     appointments,
     crmClientsCount,
     reviews,
     unreadMessages,
     totalEarnings: totalEarnings._sum.lawyerAmount || 0,
+    earningsByClient,
   });
 }

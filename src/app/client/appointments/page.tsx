@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Stars } from "@/components/ui/stars";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { buildGoogleCalendarLink } from "@/lib/calendar-link";
 import { SkeletonList } from "@/components/ui/skeleton";
 import {
   CLIENT_CANCELLATION_CUTOFF_HOURS,
@@ -185,12 +186,20 @@ export default function ClientAppointments() {
                   </div>
                   <div className="flex items-center gap-2">
                     <a
-                      href={`/api/appointments/${apt.id}/ics`}
+                      href={buildGoogleCalendarLink({
+                        title: `Consulta con ${apt.lawyer.firstName} ${apt.lawyer.lastName}`,
+                        startISO: apt.dateTime,
+                        details: apt.meetLink
+                          ? `Link de Google Meet: ${apt.meetLink}`
+                          : "Consulta legal reservada en LegalConnect",
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
-                      title="Agregar al calendario"
+                      title="Agregar a Google Calendar"
                     >
                       <CalendarPlus className="w-4 h-4" />
-                      .ics
+                      Calendario
                     </a>
                     {apt.meetLink && (
                       <a
@@ -290,9 +299,17 @@ export default function ClientAppointments() {
                       )}
                       {apt.status === "confirmed" && (
                         <a
-                          href={`/api/appointments/${apt.id}/ics`}
+                          href={buildGoogleCalendarLink({
+                            title: `Consulta con ${apt.lawyer.firstName} ${apt.lawyer.lastName}`,
+                            startISO: apt.dateTime,
+                            details: apt.meetLink
+                              ? `Link de Google Meet: ${apt.meetLink}`
+                              : "Consulta legal reservada en LegalConnect",
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-                          title="Agregar a calendario (.ics)"
+                          title="Agregar a Google Calendar"
                         >
                           <CalendarPlus className="w-4 h-4 text-brand-600" />
                         </a>

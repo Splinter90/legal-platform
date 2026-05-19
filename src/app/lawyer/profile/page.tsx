@@ -1,7 +1,6 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,16 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Stars } from "@/components/ui/stars";
 import { PhoneInputAR } from "@/components/ui/phone-input";
 import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
-import { Save, MapPin, CreditCard, User, Crown, CheckCircle, AlertCircle } from "lucide-react";
+import { Save, MapPin, CreditCard, User, Crown, CheckCircle, AlertCircle, X, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { Skeleton, SkeletonProfile } from "@/components/ui/skeleton";
+import { SkeletonProfile } from "@/components/ui/skeleton";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 
-const LawyersMap = dynamic(() => import("@/components/maps/lawyers-map"), {
-  ssr: false,
-  loading: () => (
-<Skeleton className="h-[250px] rounded-2xl" />
-  ),
-});
+const SPECIALTY_OPTIONS = [
+  "Derecho Penal", "Derecho Civil", "Derecho Laboral", "Derecho Comercial",
+  "Derecho de Familia", "Derecho Tributario", "Derecho Administrativo",
+  "Derecho Ambiental", "Derecho Inmobiliario", "Derecho de Seguros",
+  "Derecho Informatico", "Derecho Migratorio",
+];
 
 export default function LawyerProfile() {
   const searchParams = useSearchParams();
@@ -28,6 +28,8 @@ export default function LawyerProfile() {
   const [saved, setSaved] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
   const [subscribing, setSubscribing] = useState(false);
+  const [specialtyToAdd, setSpecialtyToAdd] = useState("");
+  const [savingSpecialties, setSavingSpecialties] = useState(false);
   const paymentStatus = searchParams.get("payment");
 
   useEffect(() => {
@@ -74,6 +76,35 @@ export default function LawyerProfile() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  async function updateSpecialties(next: string[]) {
+    setSavingSpecialties(true);
+    try {
+      const res = await fetch("/api/lawyers/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ specialties: next.join(", ") }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "No se pudo actualizar");
+        return;
+      }
+      const updated = await res.json();
+      setLawyer(updated);
+      setForm(updated);
+    } finally {
+      setSavingSpecialties(false);
+    }
+  }
+
+  function currentSpecialties(): string[] {
+    if (!lawyer?.specialties) return [];
+    return lawyer.specialties
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter((s: string) => s.length > 0);
   }
 
   async function handleSubscribe() {
@@ -188,10 +219,25 @@ export default function LawyerProfile() {
         <Card>
           <CardContent className="py-6">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold text-2xl">
-                {lawyer.firstName[0]}
-                {lawyer.lastName[0]}
-              </div>
+              <AvatarUpload
+                currentUrl={lawyer.profilePhoto}
+                fallbackInitials={`${lawyer.firstName[0] || ""}${lawyer.lastName[0] || ""}`.toUpperCase()}
+                size="lg"
+                onChange={async (url) => {
+                  const res = await fetch("/api/lawyers/profile", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ profilePhoto: url }),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data?.error || "Error");
+                  }
+                  const updated = await res.json();
+                  setLawyer(updated);
+                  setForm(updated);
+                }}
+              />
               <div>
                 <h2 className="text-xl font-bold text-slate-900">
                   {lawyer.firstName} {lawyer.lastName}
@@ -215,56 +261,6 @@ export default function LawyerProfile() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Location map */}
-        {lawyer.latitude && lawyer.longitude ? (
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-emerald-600" />
-                Tu ubicacion en el mapa
-              </h2>
-            </CardHeader>
-            <CardContent>
-              <LawyersMap
-                lawyers={[{
-                  id: lawyer.id,
-                  firstName: lawyer.firstName,
-                  lastName: lawyer.lastName,
-                  specialties: lawyer.specialties,
-                  province: lawyer.province,
-                  city: lawyer.city,
-                  address: lawyer.address,
-                  rating: lawyer.rating,
-                  reviewCount: lawyer.reviewCount,
-                  latitude: lawyer.latitude,
-                  longitude: lawyer.longitude,
-                }]}
-                showLink={false}
-                height="250px"
-              />
-              <p className="text-xs text-slate-400 mt-2">
-                La ubicacion se calcula automaticamente a partir de tu direccion. Si no es correcta, actualiza tu direccion abajo.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-amber-200 bg-amber-50/30">
-            <CardContent className="py-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Sin ubicacion en el mapa</h3>
-                  <p className="text-sm text-amber-600">
-                    Completa tu direccion para aparecer en el mapa de abogados
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Editable fields */}
         <Card>
@@ -361,12 +357,62 @@ export default function LawyerProfile() {
             <h3 className="text-sm font-semibold text-slate-700 mb-3">
               Especialidades
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {lawyer.specialties.split(",").map((s: string) => (
-                <Badge key={s} variant="info">
-                  {s.trim()}
-                </Badge>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {currentSpecialties().length === 0 && (
+                <p className="text-sm text-slate-400">Aún no agregaste especialidades.</p>
+              )}
+              {currentSpecialties().map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 text-sm font-medium"
+                >
+                  {s}
+                  <button
+                    type="button"
+                    disabled={savingSpecialties || currentSpecialties().length <= 1}
+                    onClick={() => {
+                      const next = currentSpecialties().filter((x) => x !== s);
+                      updateSpecialties(next);
+                    }}
+                    title={
+                      currentSpecialties().length <= 1
+                        ? "Debés mantener al menos una"
+                        : "Quitar"
+                    }
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-brand-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
               ))}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={specialtyToAdd}
+                onChange={(e) => setSpecialtyToAdd(e.target.value)}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">Elegí una especialidad para agregar...</option>
+                {SPECIALTY_OPTIONS.filter(
+                  (opt) => !currentSpecialties().includes(opt)
+                ).map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                disabled={!specialtyToAdd || savingSpecialties}
+                onClick={async () => {
+                  const next = [...currentSpecialties(), specialtyToAdd];
+                  await updateSpecialties(next);
+                  setSpecialtyToAdd("");
+                }}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Agregar
+              </Button>
             </div>
           </CardContent>
         </Card>

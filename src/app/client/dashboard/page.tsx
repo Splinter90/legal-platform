@@ -13,16 +13,40 @@ import {
   MessageSquare,
   FileText,
   ArrowRight,
+  Heart,
+  MapPin,
 } from "lucide-react";
+import { Stars } from "@/components/ui/stars";
+import { FavoriteButton } from "@/components/client/favorite-button";
+
+type FavoriteLawyer = {
+  id: string;
+  lawyer: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profilePhoto: string | null;
+    specialties: string;
+    city: string;
+    province: string;
+    rating: number;
+    reviewCount: number;
+  };
+};
 
 export default function ClientDashboard() {
   const { data: session } = useSession();
   const [data, setData] = useState<any>(null);
+  const [favorites, setFavorites] = useState<FavoriteLawyer[] | null>(null);
 
   useEffect(() => {
     fetch("/api/clients/dashboard")
       .then((r) => r.json())
       .then(setData);
+    fetch("/api/favorites")
+      .then((r) => r.json())
+      .then((d) => setFavorites(Array.isArray(d) ? d : []))
+      .catch(() => setFavorites([]));
   }, []);
 
   if (!data) {
@@ -109,6 +133,68 @@ export default function ClientDashboard() {
           </Reveal>
         ))}
       </div>
+
+      {/* Favorites */}
+      {favorites && favorites.length > 0 && (
+        <Reveal className="mb-6">
+          <Card>
+            <CardContent className="py-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-rose-500" />
+                  Tus abogados
+                </h3>
+                <Link
+                  href="/client/lawyers"
+                  className="text-sm text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1"
+                >
+                  Buscar más <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {favorites.slice(0, 6).map((fav) => (
+                  <div
+                    key={fav.id}
+                    className="relative rounded-2xl border border-slate-200 bg-white p-4 hover:border-brand-200 hover:shadow-sm transition-all"
+                  >
+                    <div className="absolute top-3 right-3">
+                      <FavoriteButton
+                        lawyerId={fav.lawyer.id}
+                        initial={true}
+                        size="sm"
+                      />
+                    </div>
+                    <Link
+                      href={`/client/lawyers/${fav.lawyer.id}`}
+                      className="flex items-start gap-3"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {fav.lawyer.firstName[0]}
+                        {fav.lawyer.lastName[0]}
+                      </div>
+                      <div className="min-w-0 pr-8">
+                        <p className="font-semibold text-slate-900 text-sm truncate">
+                          {fav.lawyer.firstName} {fav.lawyer.lastName}
+                        </p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Stars rating={Math.round(fav.lawyer.rating)} size="sm" />
+                          <span className="text-[11px] text-slate-500">
+                            ({fav.lawyer.reviewCount})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                          <MapPin className="w-3 h-3" />
+                          {fav.lawyer.city}, {fav.lawyer.province}
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </Reveal>
+      )}
 
       {/* Recent appointments */}
       <Reveal>

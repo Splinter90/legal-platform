@@ -212,12 +212,22 @@ async function handleAppointmentPayment(externalRef: string, status: string, mpP
       meetLink
     ).catch((err) => console.error("Email send failed:", err?.message || err));
 
+    const startDate = new Date(appointment.dateTime);
+    const durationMin = appointment.lawyer.consultationDuration || 60;
+    const endDate = new Date(startDate.getTime() + durationMin * 60 * 1000);
+
     sendPaymentConfirmedToClient(
       appointment.client.email,
       appointment.client.name,
       lawyerFullName,
       dateStr,
-      meetLink
+      meetLink,
+      {
+        appointmentId: appointment.id,
+        startsAt: startDate,
+        endsAt: endDate,
+        lawyerEmail: appointment.lawyer.email,
+      }
     ).catch((err) => console.error("Email send failed:", err?.message || err));
   }
 }

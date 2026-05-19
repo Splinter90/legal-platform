@@ -19,6 +19,7 @@ import {
   Briefcase,
   Clock,
   FileText,
+  Heart,
   Menu,
   X,
 } from "lucide-react";
@@ -56,6 +57,7 @@ const menuItems: Record<string, SidebarItem[]> = {
   client: [
     { label: "Dashboard", href: "/client/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
     { label: "Buscar Abogados", href: "/client/lawyers", icon: <Search className="w-5 h-5" /> },
+    { label: "Favoritos", href: "/client/favorites", icon: <Heart className="w-5 h-5" /> },
     { label: "Mapa", href: "/client/map", icon: <MapPin className="w-5 h-5" /> },
     { label: "Mis Citas", href: "/client/appointments", icon: <Calendar className="w-5 h-5" /> },
     { label: "Mis Tramites", href: "/client/cases", icon: <FileText className="w-5 h-5" /> },

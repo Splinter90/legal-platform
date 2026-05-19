@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateFutureDate } from "@/lib/validations";
 import { computeConflictWindow } from "@/lib/appointment-conflict";
 import { sendAppointmentCreatedToLawyer } from "@/lib/email";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,6 +14,21 @@ export async function POST(req: NextRequest) {
     if (!session || (session.user as any).role !== "client") {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+
+    const clientIdRl = (session.user as any).id as string;
+    const userLimit = rateLimit({
+      key: `appointments:client:${clientIdRl}`,
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!userLimit.ok) return rateLimitResponse(userLimit);
+
+    const ipLimit = rateLimit({
+      key: `appointments:ip:${getClientIp(req)}`,
+      limit: 15,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!ipLimit.ok) return rateLimitResponse(ipLimit);
 
     const { lawyerId, dateTime, notes } = await req.json();
 
@@ -150,7 +166,10 @@ export async function GET() {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const where = role === "client" ? { clientId: userId } : { lawyerId: userId };
+    const where =
+      role === "client"
+        ? { clientId: userId, archivedByClient: false }
+        : { lawyerId: userId, archivedByLawyer: false };
     const include = role === "client"
       ? {
           lawyer: { select: { id: true, firstName: true, lastName: true, email: true } },

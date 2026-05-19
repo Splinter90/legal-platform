@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cancelAppointmentWithRefund } from "@/lib/appointments";
-import { sendAppointmentRefundedToClient } from "@/lib/email";
+import {
+  sendAppointmentRefundedToClient,
+  sendReviewRequestToClient,
+} from "@/lib/email";
 
 export async function PUT(req: NextRequest) {
   try {
@@ -108,6 +111,25 @@ export async function PUT(req: NextRequest) {
           appointmentId: appointment.id,
         },
       });
+
+      const alreadyAskedFor = await prisma.review.findFirst({
+        where: {
+          clientId: appointment.client.id,
+          lawyerId: appointment.lawyerId,
+        },
+      });
+      if (!alreadyAskedFor && !appointment.reviewRequestedAt) {
+        sendReviewRequestToClient(
+          appointment.client.email,
+          appointment.client.name,
+          lawyerFullName,
+          appointment.id
+        ).catch((err) => console.error("review email failed:", err));
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: { reviewRequestedAt: new Date() },
+        });
+      }
     }
 
     return NextResponse.json(updated);

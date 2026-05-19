@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { buildAppointmentIcs } from "./ics";
 
 const transporter = process.env.SMTP_HOST
   ? nodemailer.createTransport({
@@ -100,19 +101,49 @@ export async function sendPaymentConfirmedToClient(
   clientName: string,
   lawyerFullName: string,
   dateStr: string,
-  meetLink?: string | null
+  meetLink?: string | null,
+  icsContext?: {
+    appointmentId: string;
+    startsAt: Date;
+    endsAt: Date;
+    lawyerEmail?: string | null;
+  } | null
 ) {
   const meetSection = meetLink
     ? `<p>Link de Google Meet: <a href="${meetLink}">${meetLink}</a></p>`
     : "";
 
-  return sendEmail({
-    to: clientEmail,
-    subject: "Cita confirmada - LegalConnect",
-    body: `<p>Hola <strong>${clientName}</strong>,</p>
+  const subject = "Cita confirmada - LegalConnect";
+  const body = `<p>Hola <strong>${clientName}</strong>,</p>
       <p>Tu consulta con <strong>${lawyerFullName}</strong> para el <strong>${dateStr}</strong> esta confirmada.</p>
       ${meetSection}
-      <p><a href="${process.env.NEXTAUTH_URL}/client/appointments" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Ver mis citas</a></p>`,
+      <p>Adjuntamos un archivo <strong>.ics</strong> para que lo agregues a Google Calendar, Outlook o Apple Calendar.</p>
+      <p><a href="${process.env.NEXTAUTH_URL}/client/appointments" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Ver mis citas</a></p>`;
+
+  if (!icsContext) {
+    return sendEmail({ to: clientEmail, subject, body });
+  }
+
+  const ics = buildAppointmentIcs({
+    id: icsContext.appointmentId,
+    startsAt: icsContext.startsAt,
+    endsAt: icsContext.endsAt,
+    title: `Consulta legal con ${lawyerFullName}`,
+    description: meetLink ? `Google Meet: ${meetLink}` : "",
+    location: meetLink || null,
+    url: meetLink || null,
+    organizerEmail: icsContext.lawyerEmail || null,
+    organizerName: lawyerFullName,
+    attendeeEmail: clientEmail,
+    attendeeName: clientName,
+  });
+
+  return sendEmailWithIcs({
+    to: clientEmail,
+    subject,
+    body,
+    ics,
+    icsFileName: `consulta-${icsContext.appointmentId}.ics`,
   });
 }
 
@@ -296,6 +327,75 @@ export async function sendAppointmentCancelledByClientToLawyer(
       ${refundBlock}
       <p>El espacio en tu agenda quedo liberado.</p>
       <p><a href="${process.env.NEXTAUTH_URL}/lawyer/appointments" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Ver mis citas</a></p>`,
+  });
+}
+
+export async function sendReviewRequestToClient(
+  clientEmail: string,
+  clientName: string,
+  lawyerFullName: string,
+  appointmentId: string
+) {
+  const link = `${process.env.NEXTAUTH_URL}/client/appointments?review=${appointmentId}`;
+  return sendEmail({
+    to: clientEmail,
+    subject: "Como fue tu consulta? - LegalConnect",
+    body: `<p>Hola <strong>${clientName}</strong>,</p>
+      <p>Esperamos que tu consulta con <strong>${lawyerFullName}</strong> haya ido bien.</p>
+      <p>Te tomas un minuto para dejarle una resena? A otros clientes les sirve muchisimo para elegir.</p>
+      <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Calificar mi consulta</a></p>`,
+  });
+}
+
+export async function sendEmailWithIcs({
+  to,
+  subject,
+  body,
+  ics,
+  icsFileName,
+}: {
+  to: string;
+  subject: string;
+  body: string;
+  ics: string;
+  icsFileName: string;
+}): Promise<boolean> {
+  if (!transporter) return false;
+  try {
+    await transporter.sendMail({
+      from: FROM,
+      to,
+      subject,
+      html: wrapTemplate(subject, body),
+      attachments: [
+        {
+          filename: icsFileName,
+          content: ics,
+          contentType: "text/calendar; charset=utf-8; method=PUBLISH",
+        },
+      ],
+    });
+    return true;
+  } catch (err) {
+    console.error("Email (.ics) send error:", err);
+    return false;
+  }
+}
+
+export async function sendAdminPasswordReset(
+  adminEmail: string,
+  adminUsername: string,
+  resetLink: string,
+  expiresInMinutes: number
+) {
+  return sendEmail({
+    to: adminEmail,
+    subject: "Restablecer contrasena de admin - LegalConnect",
+    body: `<p>Hola <strong>${adminUsername}</strong>,</p>
+      <p>Recibimos una solicitud para restablecer la contrasena del panel de administracion.</p>
+      <p>El link es valido por <strong>${expiresInMinutes} minutos</strong> y solo puede usarse una vez.</p>
+      <p><a href="${resetLink}" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Restablecer contrasena</a></p>
+      <p style="color:#94a3b8;font-size:13px;margin-top:16px">Si no fuiste vos, ignora este email. Tu contrasena no va a cambiar.</p>`,
   });
 }
 

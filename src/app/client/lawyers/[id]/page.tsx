@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SkeletonProfile } from "@/components/ui/skeleton";
+import { FavoriteButton } from "@/components/client/favorite-button";
 
 interface LawyerProfile {
   id: string;
@@ -167,9 +168,12 @@ export default function LawyerProfilePage() {
               </div>
             )}
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-slate-900">
-                {lawyer.firstName} {lawyer.lastName}
-              </h1>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {lawyer.firstName} {lawyer.lastName}
+                </h1>
+                <FavoriteButton lawyerId={lawyer.id} />
+              </div>
               <div className="flex items-center gap-2 mt-2">
                 <Stars rating={Math.round(lawyer.rating)} size="sm" />
                 <span className="text-sm text-slate-500">

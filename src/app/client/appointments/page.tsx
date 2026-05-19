@@ -24,6 +24,8 @@ import {
   CheckCircle,
   AlertCircle,
   XCircle,
+  Trash2,
+  CalendarPlus,
 } from "lucide-react";
 
 interface Appointment {
@@ -86,6 +88,14 @@ export default function ClientAppointments() {
       setAppointments(await refreshed.json());
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function archiveAppointment(id: string) {
+    if (!confirm("Quitar esta cita de tu historial?")) return;
+    const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
     }
   }
 
@@ -173,17 +183,27 @@ export default function ClientAppointments() {
                       </p>
                     </div>
                   </div>
-                  {apt.meetLink && (
+                  <div className="flex items-center gap-2">
                     <a
-                      href={apt.meetLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:from-brand-400 hover:to-brand-500 transition-all"
+                      href={`/api/appointments/${apt.id}/ics`}
+                      className="inline-flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all"
+                      title="Agregar al calendario"
                     >
-                      <Video className="w-4 h-4" />
-                      Google Meet
+                      <CalendarPlus className="w-4 h-4" />
+                      .ics
                     </a>
-                  )}
+                    {apt.meetLink && (
+                      <a
+                        href={apt.meetLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:from-brand-400 hover:to-brand-500 transition-all"
+                      >
+                        <Video className="w-4 h-4" />
+                        Google Meet
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -268,6 +288,15 @@ export default function ClientAppointments() {
                           <Video className="w-4 h-4 text-brand-600" />
                         </a>
                       )}
+                      {apt.status === "confirmed" && (
+                        <a
+                          href={`/api/appointments/${apt.id}/ics`}
+                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          title="Agregar a calendario (.ics)"
+                        >
+                          <CalendarPlus className="w-4 h-4 text-brand-600" />
+                        </a>
+                      )}
                       {(apt.status === "confirmed" || apt.status === "completed") && (
                         <Link
                           href={`/client/messages?with=${apt.lawyer.id}&name=${encodeURIComponent(`${apt.lawyer.firstName} ${apt.lawyer.lastName}`)}`}
@@ -300,6 +329,16 @@ export default function ClientAppointments() {
                           title="Cancelar cita"
                         >
                           <XCircle className="w-4 h-4 text-red-500" />
+                        </button>
+                      )}
+                      {(apt.status === "completed" ||
+                        apt.status === "cancelled") && (
+                        <button
+                          onClick={() => archiveAppointment(apt.id)}
+                          className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                          title="Quitar del historial"
+                        >
+                          <Trash2 className="w-4 h-4 text-slate-400" />
                         </button>
                       )}
                     </div>

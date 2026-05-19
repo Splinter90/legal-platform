@@ -7,7 +7,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const WARN_DAYS_BEFORE = 3;
+const WARN_DAYS_BEFORE = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function isAuthorized(req: NextRequest): boolean {

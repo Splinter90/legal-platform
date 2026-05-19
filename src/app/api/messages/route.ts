@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireLawyerFeatureAccess } from "@/lib/lawyer-access";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { canChat, CHAT_GATE_MESSAGE } from "@/lib/messaging";
+import { publishToUser } from "@/lib/message-stream";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -164,6 +165,33 @@ export async function POST(req: NextRequest) {
       message: `${senderName}: ${preview}${previewBase.length > 80 ? "..." : ""}`,
       link: role === "lawyer" ? "/client/messages" : "/lawyer/messages",
     },
+  });
+
+  const recipientRole: "client" | "lawyer" = role === "lawyer" ? "client" : "lawyer";
+  publishToUser(recipientRole, recipientId, "message", {
+    id: message.id,
+    content: message.content,
+    senderId: message.senderId,
+    senderType: message.senderType,
+    senderName,
+    lawyerId: message.lawyerId,
+    clientId: message.clientId,
+    attachmentPublicId: message.attachmentPublicId,
+    attachmentType: message.attachmentType,
+    attachmentName: message.attachmentName,
+    createdAt: message.createdAt.toISOString(),
+  });
+  publishToUser(role, userId, "message", {
+    id: message.id,
+    content: message.content,
+    senderId: message.senderId,
+    senderType: message.senderType,
+    lawyerId: message.lawyerId,
+    clientId: message.clientId,
+    attachmentPublicId: message.attachmentPublicId,
+    attachmentType: message.attachmentType,
+    attachmentName: message.attachmentName,
+    createdAt: message.createdAt.toISOString(),
   });
 
   return NextResponse.json(message);

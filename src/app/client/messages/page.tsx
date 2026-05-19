@@ -81,9 +81,23 @@ export default function ClientMessages() {
   }, [messages]);
 
   useEffect(() => {
-    if (!selectedLawyer) return;
-    const interval = setInterval(() => fetchMessages(selectedLawyer, false), 5000);
-    return () => clearInterval(interval);
+    const es = new EventSource("/api/messages/stream");
+    es.addEventListener("message", (ev: MessageEvent) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (selectedLawyer && data.lawyerId === selectedLawyer) {
+          fetchMessages(selectedLawyer, false);
+        } else if (!selectedLawyer) {
+          fetchConversations();
+        } else {
+          fetchConversations();
+        }
+      } catch {}
+    });
+    es.onerror = () => {
+      if (selectedLawyer) fetchMessages(selectedLawyer, false);
+    };
+    return () => es.close();
   }, [selectedLawyer]);
 
   async function fetchConversations() {

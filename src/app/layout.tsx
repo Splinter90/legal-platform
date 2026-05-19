@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { PwaRegister } from "@/components/pwa-register";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -54,7 +55,18 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/logo.jpeg",
+  },
+  manifest: "/manifest.json",
+  themeColor: "#14b8a6",
+  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Leyes Digital",
+  },
 };
 
 export default function RootLayout({
@@ -66,6 +78,7 @@ export default function RootLayout({
     <html lang="es" className="h-full">
       <body className={`${inter.className} min-h-full`}>
         <Providers>{children}</Providers>
+        <PwaRegister />
       </body>
     </html>
   );

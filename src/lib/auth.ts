@@ -191,6 +191,16 @@ export const authOptions: NextAuthOptions = {
         token.lastActivity = Date.now();
       }
 
+      if (token.role === "client" && token.id) {
+        const c = await prisma.client.findUnique({
+          where: { id: token.id as string },
+          select: { deletedAt: true },
+        });
+        if (!c || c.deletedAt) {
+          return {} as any;
+        }
+      }
+
       if (account?.provider === "google") {
         const email = token.email!;
         token.accessToken = account.access_token;

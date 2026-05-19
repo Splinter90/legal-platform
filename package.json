@@ -29,6 +29,7 @@
     "file-type": "^16.5.4",
     "framer-motion": "^12.38.0",
     "googleapis": "^171.4.0",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.378.0",
     "mercadopago": "^2.0.15",

@@ -26,7 +26,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           "inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]",
           pill ? "rounded-full" : "rounded-xl",
           {
-            "bg-gradient-to-r from-brand-500 to-brand-600 text-white hover:from-brand-400 hover:to-brand-500 focus:ring-brand-500 shadow-glow-brand hover:shadow-[0_15px_40px_-10px_rgba(20,184,166,0.6)] hover:-translate-y-0.5":
+            "bg-gradient-to-r from-brand-600 to-brand-700 text-white hover:from-brand-500 hover:to-brand-600 focus:ring-brand-500 shadow-glow-brand hover:shadow-[0_15px_40px_-10px_rgba(20,184,166,0.6)] hover:-translate-y-0.5":
               variant === "primary",
             "bg-gradient-to-r from-accent-400 to-accent-500 text-slate-900 hover:from-accent-300 hover:to-accent-400 focus:ring-accent-500 shadow-glow-accent hover:shadow-[0_15px_40px_-10px_rgba(251,191,36,0.6)] hover:-translate-y-0.5":
               variant === "accent",

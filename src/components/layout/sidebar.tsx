@@ -62,6 +62,7 @@ const menuItems: Record<string, SidebarItem[]> = {
     { label: "Mis Citas", href: "/client/appointments", icon: <Calendar className="w-5 h-5" /> },
     { label: "Mis Tramites", href: "/client/cases", icon: <FileText className="w-5 h-5" /> },
     { label: "Mensajes", href: "/client/messages", icon: <MessageSquare className="w-5 h-5" /> },
+    { label: "Configuracion", href: "/client/settings", icon: <Settings className="w-5 h-5" /> },
   ],
 };
 
@@ -136,7 +137,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
               className={cn(
                 "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 relative",
                 isActive
-                  ? "bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-glow-brand"
+                  ? "bg-gradient-to-r from-brand-600 to-brand-700 text-white shadow-glow-brand"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               )}
             >
@@ -175,9 +176,12 @@ export function Sidebar({ role, userName }: SidebarProps) {
       {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
+        aria-label="Abrir menú de navegación"
+        aria-expanded={mobileOpen}
+        aria-controls="mobile-sidebar"
         className="fixed top-3 left-3 z-50 p-2.5 rounded-xl bg-white shadow-lg border border-slate-200 lg:hidden hover:border-brand-300 transition-colors"
       >
-        <Menu className="w-5 h-5 text-slate-700" />
+        <Menu className="w-5 h-5 text-slate-700" aria-hidden="true" />
       </button>
 
       {/* Mobile overlay */}
@@ -190,6 +194,8 @@ export function Sidebar({ role, userName }: SidebarProps) {
 
       {/* Mobile sidebar */}
       <aside
+        id="mobile-sidebar"
+        aria-label="Navegación principal"
         className={cn(
           "fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 flex flex-col z-50 transition-transform duration-300 lg:hidden shadow-2xl",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -197,15 +203,19 @@ export function Sidebar({ role, userName }: SidebarProps) {
       >
         <button
           onClick={() => setMobileOpen(false)}
+          aria-label="Cerrar menú de navegación"
           className="absolute top-4 right-4 p-1 rounded-lg hover:bg-slate-100 z-10"
         >
-          <X className="w-5 h-5 text-slate-500" />
+          <X className="w-5 h-5 text-slate-500" aria-hidden="true" />
         </button>
         {sidebarContent}
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 flex-col z-40 hidden lg:flex">
+      <aside
+        aria-label="Navegación principal"
+        className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 flex-col z-40 hidden lg:flex"
+      >
         {sidebarContent}
       </aside>
 

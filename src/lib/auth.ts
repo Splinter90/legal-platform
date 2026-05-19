@@ -191,16 +191,6 @@ export const authOptions: NextAuthOptions = {
         token.lastActivity = Date.now();
       }
 
-      if (token.role === "client" && token.id) {
-        const c = await prisma.client.findUnique({
-          where: { id: token.id as string },
-          select: { deletedAt: true },
-        });
-        if (!c || c.deletedAt) {
-          return {} as any;
-        }
-      }
-
       if (account?.provider === "google") {
         const email = token.email!;
         token.accessToken = account.access_token;
@@ -234,6 +224,18 @@ export const authOptions: NextAuthOptions = {
           });
           if (lawyer) token.lawyerStatus = lawyer.status;
           token.lawyerStatusCheckedAt = Date.now();
+        }
+      }
+
+      // Soft-delete check para clientes: corre solo en token refresh (no en sign-in
+      // inicial, donde token.id es el de Google y todavía no se mapeó al Client).
+      if (!user && !account && token.role === "client" && token.id) {
+        const c = await prisma.client.findUnique({
+          where: { id: token.id as string },
+          select: { deletedAt: true },
+        });
+        if (!c || c.deletedAt) {
+          return {} as any;
         }
       }
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isValidLawyerStatus } from "@/lib/validations";
 import { canTransitionLawyerStatus } from "@/lib/lawyer-status-transitions";
 import { sendLawyerStatusUpdate } from "@/lib/email";
+import { logAdminAction } from "@/lib/admin-audit";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -83,6 +84,26 @@ export async function PUT(req: NextRequest) {
   const updated = await prisma.lawyer.update({
     where: { id },
     data: updateData,
+  });
+
+  const adminId = (session.user as any).id as string;
+  const actionByStatus: Record<string, string> = {
+    approved: "lawyer.approve",
+    rejected: "lawyer.reject",
+    suspended: "lawyer.suspend",
+    pending: "lawyer.set_pending",
+  };
+  await logAdminAction({
+    adminId,
+    action: actionByStatus[status] || "lawyer.status_change",
+    target: "lawyer",
+    targetId: id,
+    metadata: {
+      previousStatus: lawyer.status,
+      newStatus: status,
+      rejectionReason: updateData.rejectionReason ?? null,
+    },
+    req,
   });
 
   const rejectionMsg = status === "rejected" && updateData.rejectionReason

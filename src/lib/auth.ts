@@ -7,6 +7,8 @@ import { prisma } from "./prisma";
 import { getIpFromHeaders, rateLimit } from "./rate-limit";
 import { verifyTotp } from "./totp";
 
+const ADMIN_INACTIVITY_MS = 60 * 60 * 1000;
+
 async function refreshAccessToken(token: any) {
   try {
     const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -175,6 +177,18 @@ export const authOptions: NextAuthOptions = {
         if ((user as any).lawyerStatus) {
           token.lawyerStatus = (user as any).lawyerStatus;
         }
+        if (token.role === "admin") {
+          token.lastActivity = Date.now();
+        }
+      }
+
+      if (token.role === "admin") {
+        const lastActivity = (token.lastActivity as number | undefined) ?? 0;
+        const inactivityMs = ADMIN_INACTIVITY_MS;
+        if (lastActivity && Date.now() - lastActivity > inactivityMs) {
+          return {} as any;
+        }
+        token.lastActivity = Date.now();
       }
 
       if (account?.provider === "google") {
@@ -224,6 +238,9 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      if (!token || !token.id) {
+        return { expires: new Date(0).toISOString() } as any;
+      }
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
@@ -231,6 +248,11 @@ export const authOptions: NextAuthOptions = {
       }
       (session as any).accessToken = token.accessToken;
       (session as any).error = token.error;
+      if (token.role === "admin") {
+        (session as any).expires = new Date(
+          ((token.lastActivity as number | undefined) ?? Date.now()) + ADMIN_INACTIVITY_MS
+        ).toISOString();
+      }
       return session;
     },
   },

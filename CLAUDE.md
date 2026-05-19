@@ -66,10 +66,16 @@ npm test                 # vitest run
 > desarrollo. La DB de producción solo se modifica desde Vercel.
 >
 > **Cambios de schema en producción**: hacer `db:push` desde local primero
-> (afecta sólo `Abogados`), validar, y después aplicar a `producción` desde
-> el dashboard de Neon (Branches → producción → "Restablecer desde rama hija"
-> apuntando a `Abogados`) o configurando un job temporal con `DATABASE_URL`
-> de producción.
+> (afecta sólo `Abogados`), validar, y después aplicar a `producción`. Para
+> esto último ya tenés la URL guardada en `.env.prod` (gitignored, no se
+> carga solo por Next.js). Comando:
+>
+> ```bash
+> set -a && source .env.prod && set +a && npx prisma db push --skip-generate
+> ```
+>
+> Alternativa destructiva: dashboard de Neon → Branches → producción →
+> "Restablecer desde rama hija" apuntando a `Abogados` (pisa data de prod).
 
 ---
 

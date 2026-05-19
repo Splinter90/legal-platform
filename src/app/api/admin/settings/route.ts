@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { validateNumericRange, validatePassword } from "@/lib/validations";
 import { isValidScheme } from "@/lib/mp-fees";
+import { logAdminAction } from "@/lib/admin-audit";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -121,6 +122,18 @@ export async function PUT(req: NextRequest) {
   const updated = await prisma.admin.update({
     where: { id: admin.id },
     data: updateData,
+  });
+
+  const changedFields = Object.keys(updateData).map((k) =>
+    k === "password" ? "password" : k
+  );
+  await logAdminAction({
+    adminId: admin.id,
+    action: "settings.update",
+    target: "admin",
+    targetId: admin.id,
+    metadata: { changedFields },
+    req,
   });
 
   return NextResponse.json({

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { v2 as cloudinary } from "cloudinary";
+import { fromBuffer as detectFileType } from "file-type";
 import { sanitizeFolderName } from "@/lib/validations";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const PUBLIC_UPLOAD_FOLDERS = new Set(["lawyer-applications"]);
 const AUTHENTICATED_UPLOAD_FOLDERS = new Set(["lawyers", "general", "message-attachments"]);
@@ -18,6 +20,14 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const ipLimit = rateLimit({
+      key: `upload:ip:${ip}`,
+      limit: 30,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!ipLimit.ok) return rateLimitResponse(ipLimit);
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const rawFolder = (formData.get("folder") as string) || "general";
@@ -33,6 +43,18 @@ export async function POST(req: NextRequest) {
 
     if (!isPublicApplicationUpload && (!session || !isAuthenticatedUpload)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    if (session?.user) {
+      const userId = (session.user as any).id as string | undefined;
+      if (userId) {
+        const userLimit = rateLimit({
+          key: `upload:user:${userId}`,
+          limit: 30,
+          windowMs: 60 * 60 * 1000,
+        });
+        if (!userLimit.ok) return rateLimitResponse(userLimit);
+      }
     }
 
     if (folder === "message-attachments") {
@@ -75,7 +97,41 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const resourceType: "image" | "raw" = isPdf ? "raw" : "image";
+    const detected = await detectFileType(buffer);
+    if (!detected) {
+      return NextResponse.json(
+        { error: "No se pudo determinar el tipo de archivo" },
+        { status: 400 }
+      );
+    }
+
+    const allowedMime = isMessageAttachment
+      ? new Set<string>([
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "application/pdf",
+        ])
+      : new Set<string>(["image/jpeg", "image/png", "image/webp"]);
+
+    if (!allowedMime.has(detected.mime)) {
+      return NextResponse.json(
+        {
+          error: `Contenido del archivo no coincide con el tipo declarado (detectado: ${detected.mime})`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const isPdfReal = detected.mime === "application/pdf";
+    if (isPdf !== isPdfReal) {
+      return NextResponse.json(
+        { error: "El tipo declarado no coincide con el contenido real" },
+        { status: 400 }
+      );
+    }
+
+    const resourceType: "image" | "raw" = isPdfReal ? "raw" : "image";
 
     const uploadResult = await new Promise<{
       secure_url: string;
@@ -101,7 +157,7 @@ export async function POST(req: NextRequest) {
       url: uploadResult.secure_url,
       publicId: uploadResult.public_id,
       resourceType: uploadResult.resource_type,
-      type: isPdf ? "pdf" : "image",
+      type: isPdfReal ? "pdf" : "image",
       name: file.name,
       size: file.size,
     });

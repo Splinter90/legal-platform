@@ -262,6 +262,16 @@ export default function LoginPage() {
                     Cancelar
                   </button>
                 )}
+                {!needsTotp && (
+                  <p className="text-center text-sm text-slate-400 pt-2">
+                    <Link
+                      href="/admin-recover/forgot"
+                      className="text-brand-300 hover:text-brand-200"
+                    >
+                      Olvidaste tu contrasena?
+                    </Link>
+                  </p>
+                )}
               </form>
             )}
           </div>

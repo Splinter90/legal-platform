@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { verifyTotp } from "@/lib/totp";
+import { logAdminAction } from "@/lib/admin-audit";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -35,6 +36,14 @@ export async function POST(req: NextRequest) {
   await prisma.admin.update({
     where: { id: admin.id },
     data: { totpEnabled: false, totpSecret: null },
+  });
+
+  await logAdminAction({
+    adminId: admin.id,
+    action: "admin.2fa_disable",
+    target: "admin",
+    targetId: admin.id,
+    req,
   });
 
   return NextResponse.json({ ok: true });

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateRating } from "@/lib/validations";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -11,6 +12,20 @@ export async function POST(req: NextRequest) {
   }
 
   const clientId = (session.user as any).id;
+
+  const rl = rateLimit({
+    key: `reviews:client:${clientId}`,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!rl.ok) return rateLimitResponse(rl);
+
+  const rlIp = rateLimit({
+    key: `reviews:ip:${getClientIp(req)}`,
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!rlIp.ok) return rateLimitResponse(rlIp);
   const { lawyerId, rating, comment } = await req.json();
 
   if (!lawyerId) {

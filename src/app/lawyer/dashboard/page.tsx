@@ -183,7 +183,10 @@ export default function LawyerDashboard() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-slate-500 truncate">{stat.label}</p>
-                  <p className="text-xl sm:text-2xl font-extrabold text-slate-900 break-words leading-tight">
+                  <p
+                    className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 whitespace-nowrap truncate leading-tight"
+                    title={String(stat.value)}
+                  >
                     {stat.value}
                   </p>
                 </div>

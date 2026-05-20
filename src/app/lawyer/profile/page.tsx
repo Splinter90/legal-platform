@@ -61,6 +61,8 @@ export default function LawyerProfile() {
         narrative: form.narrative,
         experience: form.experience,
         address: form.address,
+        city: form.city,
+        province: form.province,
         cbuAlias: form.cbuAlias,
         latitude: typeof form.latitude === "number" ? form.latitude : undefined,
         longitude: typeof form.longitude === "number" ? form.longitude : undefined,

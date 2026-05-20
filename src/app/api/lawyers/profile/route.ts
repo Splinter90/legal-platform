@@ -46,7 +46,7 @@ export async function PUT(req: NextRequest) {
     );
   }
 
-  const allowedFields = ["firstName", "lastName", "phone", "narrative", "experience", "address", "cbuAlias", "profilePhoto", "specialties"];
+  const allowedFields = ["firstName", "lastName", "phone", "narrative", "experience", "address", "city", "province", "cbuAlias", "profilePhoto", "specialties"];
   const updateData: Record<string, any> = {};
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
@@ -87,7 +87,9 @@ export async function PUT(req: NextRequest) {
     updateData.latitude = body.latitude;
     updateData.longitude = body.longitude;
   } else if (body.address !== undefined) {
-    const coords = await geocodeAddress(lawyer.city, lawyer.province, body.address);
+    const cityForGeocode = updateData.city ?? lawyer.city;
+    const provinceForGeocode = updateData.province ?? lawyer.province;
+    const coords = await geocodeAddress(cityForGeocode, provinceForGeocode, body.address);
     if (coords) {
       updateData.latitude = coords.latitude;
       updateData.longitude = coords.longitude;

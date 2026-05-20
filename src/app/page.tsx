@@ -205,7 +205,7 @@ export default function Home() {
                   className="absolute inset-0 bg-cover bg-center"
                   style={{
                     backgroundImage:
-                      "url('https://images.unsplash.com/photo-1589994965851-a8f479c573a9?w=1200&q=80')",
+                      "url('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=1200&q=80')",
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-900/90 via-brand-800/40 to-transparent mix-blend-multiply" />

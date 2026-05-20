@@ -7,7 +7,64 @@ para el abogado y panel admin con métricas y comisiones.
 > Este archivo es **el primer lugar que se lee al arrancar una sesión nueva**.
 > Mantenelo actualizado. No incluyas secrets — viven en `.env` (gitignored).
 
-## ⏯️ Última sesión (13/05/2026)
+## ⏯️ Última sesión (19/05/2026)
+
+Iteración larga sobre **paneles abogado y cliente**. Todos los cambios fueron deployados a prod (Vercel auto-deploy desde `main`).
+
+### Panel abogado (commit `5625301` + `c81b835`)
+
+- **Estados de Caso** (`src/lib/validations.ts`): `VALID_CASE_STATUSES` ahora es `["initiated", "in_progress", "waiting_docs", "in_court", "resolved"]` — antes el backend rechazaba `waiting_docs` e `in_court` por mismatch con el frontend.
+- **Dashboard** (`lawyer/dashboard/page.tsx`):
+  - Card "Ingresos Totales": `text-base sm:text-lg lg:text-xl whitespace-nowrap truncate` con `title` para tooltip (antes desbordaba o partía a dos líneas).
+  - Nueva card **"Ingresos por Cliente"** (groupBy `Appointment.clientId` con `paymentStatus=completed`) entre stats y citas/reseñas.
+  - **Banner ámbar de suscripción** cuando `subscriptionPaidUntil` está dentro de 7 días; botón "Renovar" hace POST a `/api/payments/subscription` y redirige a MP.
+  - **Banner celeste "Conectá tu Google Calendar"** cuando `googleCalendarConnected === false`; botón dispara `signIn("google", { callbackUrl: "/lawyer/dashboard" })` con consent + scope calendar.
+- **Casos** (`lawyer/cases/page.tsx` + `api/cases/route.ts`): botón mensaje (link a `/lawyer/messages?with=...`) y botón eliminar (papelera roja) visible solo cuando `status === "resolved"`. Nuevo `DELETE /api/cases?id=...` que valida ownership + status resolved y borra el `CaseTracking` (la cita y el pago quedan intactos).
+- **Citas** (`lawyer/appointments/page.tsx`): botón eliminar (soft-delete `archivedByLawyer`) para citas completadas o canceladas. El campo y el endpoint `DELETE /api/appointments/[id]` ya existían en schema.
+- **Perfil** (`lawyer/profile/page.tsx`):
+  - Eliminado el bloque "Tu ubicación en el mapa".
+  - **Especialidades editables**: chips con X para quitar, dropdown para agregar (lista canónica de 12 especialidades). `PUT /api/lawyers/profile` acepta `specialties` con validación.
+  - **Nombre y apellido editables** (commit `c81b835`): inputs en la card "Información del Perfil"; endpoint valida 2-40 caracteres; tras guardar dispara `updateSession({ name })`.
+  - `AvatarUpload` dispara `updateSession({ image })` tras subir foto.
+- **API dashboard** (`api/lawyers/dashboard/route.ts`): expone `earningsByClient[]` y `lawyer.googleCalendarConnected` (sin filtrar el token).
+
+### Cliente (commit `4b27c12` + `46f7bc5`)
+
+- **Settings** (`client/settings/page.tsx`): card "Mi perfil" ahora editable (nombre, teléfono con `PhoneInputAR`). **Quitada la card "Privacidad/Exportar mis datos"**. Email queda deshabilitado (atado a Google). Tras guardar dispara `updateSession({ name, image })`. Endpoint PUT envuelto en try/catch global (commit `46f7bc5`); frontend normaliza teléfono a formato canónico antes de enviar y muestra status HTTP en toast si el body no es JSON.
+- **Mapa** (`components/maps/lawyers-map.tsx` + `client/map/page.tsx`): `preferCanvas={true}`, `updateWhenIdle`, `keepBuffer={4}`, fotos con `loading="lazy"` + `decoding="async"`, iconos memoizados con `useMemo`, manejo de error en fetch.
+- **Topbar — UserMenu** (`components/layout/user-menu.tsx` nuevo): foto/inicial con dropdown que tiene **"Actualizar perfil"** (→ `/client/settings` o `/lawyer/profile`) y **"Cerrar sesión"** (`signOut`). Aplica en `/client/*` y `/lawyer/*`. Admin queda con el avatar estático.
+
+### Auth (commit `1f7130d`)
+
+Propagación de cambios de perfil a la session sin re-login (`src/lib/auth.ts`):
+
+- Callback `jwt` soporta `trigger === "update"`: mergea `name`/`image` recibidos vía `useSession().update(...)` al token.
+- Callback `jwt` refresca name/picture desde DB cada **5 min** (mismo patrón que `lawyerStatus`). Aplica a clientes (`token.clientCheckedAt`) y abogados (extiende el bloque `lawyerStatusCheckedAt` para incluir firstName/lastName/profilePhoto).
+- Callback `session` pasa `token.name` → `session.user.name` y `token.picture` → `session.user.image`.
+
+### Google Calendar (commit `5625301` + script + reconnect en prod)
+
+- El scope `calendar` y `prompt: "consent"` ya estaban en `lib/auth.ts`. El problema en prod era que los `googleRefreshToken` viejos no tenían el scope nuevo.
+- **Script `scripts/force-google-reconnect.ts`** (soporta `--dry-run`): vacía `googleRefreshToken` de todos los abogados con token guardado. Corrido en dev y en prod (`plataformalegales@gmail.com`, único abogado con token).
+- **Cliente** (`client/appointments/page.tsx`): los dos botones `.ics` fueron reemplazados por **deep-link a `calendar.google.com/calendar/render`** (helper en `src/lib/calendar-link.ts`). Abre Google Calendar con el evento pre-llenado, sin OAuth, funciona también para usuarios de Outlook/Apple.
+- **Abogado**: el banner del dashboard fuerza re-login con consent. Pendiente verificar que Google Calendar API esté habilitada en Google Cloud Console del proyecto del `GOOGLE_CLIENT_ID`.
+
+### Pendiente / a confirmar
+
+- **Imagen hero de la landing** (commit `3f8c531`): cambié el URL de Unsplash a `photo-1589829545856-d10d557cf95f` (Lady Justice). El usuario reportó que se había roto la imagen anterior. Si la nueva tampoco se ve, fallback: subir imagen propia a `public/images/justice.jpg`.
+- **Google Calendar end-to-end**: queda verificar que al reservar una cita y procesarse el pago en prod, el evento se crea en el calendario del abogado. Si no, casi seguro es que **Google Calendar API no está habilitada** en Google Cloud Console.
+- **Cambios externos sin commitear** (no son de esta sesión): `prisma/schema.prisma`, `src/app/admin/settings/page.tsx`, `src/app/api/admin/settings/route.ts`. Decidí no commitearlos hasta que el usuario los revise.
+
+**Commits del día (orden cronológico):**
+- `5625301` — feat(lawyer): mejoras panel abogado + Google Calendar reconnect (P1–P9)
+- `4b27c12` — feat(client): settings editables + avatar dropdown + mapa mas fluido
+- `46f7bc5` — fix(client/settings): normalizar telefono + try/catch en PUT
+- `037f5e5` — fix(lawyer/dashboard): stats en una sola linea con truncate
+- `3f8c531` — fix(landing): restaurar imagen de la estatua de la justicia
+- `1f7130d` — fix(auth): propagar cambios de perfil a la session sin re-login
+- `c81b835` — feat(lawyer): editar nombre y apellido, propagar a la session
+
+## ⏮️ Sesión anterior (13/05/2026)
 
 **Commits del día**:
 - `fbd6613` — BookingCalendar mensual con slots disponibles + filtros de reseñas (1-5★) en perfil del abogado + mapa con geolocalización del cliente + marcadores con foto de perfil.
@@ -16,12 +73,6 @@ para el abogado y panel admin con métricas y comisiones.
 - `3c787b7` → `a3f7a55` — Intento Tier 0 #1 (adjuntos privados con Cloudinary `type: authenticated`). **Plan free de Cloudinary no entrega esos assets**, así que revertimos a `type: upload`. Quedaron implementados: el proxy `/api/messages/[id]/attachment` (con ACL por sesión), `Message.attachmentPublicId` en schema. La privacidad real espera la migración a hosting propio.
 
 **Tier 0 cerrado** con commits `65ef05c` (idempotency MP), `38e54c2` (fix fallback), y configuración manual de Neon branching (branch `Abogados` para dev).
-
-**Por dónde seguir**:
-- Opción A: Tier 1 (seguridad endurecida) — headers CSP/HSTS, audit log admin, rate-limit más amplio.
-- Opción B: Tier 3 (rediseño visual completo) — paleta Navy+Gold de UI/UX Pro Max, dark mode, dot grid, EB Garamond. Tenemos prototipo HTML aprobado en `Desktop/claude/prototipo-legalconnect-v2.html`.
-
-Ver sección "Roadmap pendiente" más abajo para la lista completa priorizada.
 
 ---
 

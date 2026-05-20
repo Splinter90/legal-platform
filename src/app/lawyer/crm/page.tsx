@@ -20,7 +20,9 @@ import {
   Mail,
   MapPin,
   User,
+  FolderOpen,
 } from "lucide-react";
+import { DocumentsManager } from "@/components/lawyer/documents-manager";
 
 interface CrmClient {
   id: string;
@@ -66,6 +68,7 @@ export default function LawyerCRM() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<CrmClient | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [docsClient, setDocsClient] = useState<CrmClient | null>(null);
   const [loading, setLoading] = useState(true);
   const [access, setAccess] = useState<any>(null);
   const [accessChecked, setAccessChecked] = useState(false);
@@ -289,6 +292,14 @@ export default function LawyerCRM() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      onClick={() => setDocsClient(client)}
+                      title="Documentos"
+                    >
+                      <FolderOpen className="w-4 h-4 text-brand-600" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openEdit(client)}
                     >
                       <Edit2 className="w-4 h-4" />
@@ -414,6 +425,15 @@ export default function LawyerCRM() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!docsClient}
+        onClose={() => setDocsClient(null)}
+        title={docsClient ? `Documentos de ${docsClient.name}` : "Documentos"}
+        className="max-w-xl"
+      >
+        {docsClient && <DocumentsManager kind="crm" id={docsClient.id} />}
       </Modal>
     </div>
   );

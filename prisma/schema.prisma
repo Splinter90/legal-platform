@@ -88,6 +88,7 @@ model Lawyer {
   availability    Availability[]
   payments        Payment[]
   favoritedBy     FavoriteLawyer[]
+  caseDocuments   CaseDocument[]
 }
 
 model PushSubscription {
@@ -201,7 +202,8 @@ model CrmClient {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  lawyer      Lawyer   @relation(fields: [lawyerId], references: [id])
+  lawyer      Lawyer         @relation(fields: [lawyerId], references: [id])
+  documents   CaseDocument[]
 }
 
 model CaseTracking {
@@ -213,7 +215,31 @@ model CaseTracking {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  appointment   Appointment    @relation(fields: [appointmentId], references: [id])
+  documents     CaseDocument[]
+}
+
+model CaseDocument {
+  id              String   @id @default(cuid())
+  lawyerId        String
+  crmClientId     String?
+  caseTrackingId  String?
+  url             String
+  publicId        String?
+  resourceType    String   @default("image")
+  type            String
+  name            String
+  size            Int
+  description     String?
+  createdAt       DateTime @default(now())
+
+  lawyer       Lawyer        @relation(fields: [lawyerId], references: [id])
+  crmClient    CrmClient?    @relation(fields: [crmClientId], references: [id], onDelete: Cascade)
+  caseTracking CaseTracking? @relation(fields: [caseTrackingId], references: [id], onDelete: Cascade)
+
+  @@index([lawyerId, createdAt])
+  @@index([crmClientId, createdAt])
+  @@index([caseTrackingId, createdAt])
 }
 
 model Message {

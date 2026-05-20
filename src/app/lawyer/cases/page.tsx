@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/utils";
 import { FileText, Edit2, MessageSquare, Trash2 } from "lucide-react";
 import { LockedFeature, deriveLockReason } from "@/components/lawyer/locked-feature";
 import { SkeletonList } from "@/components/ui/skeleton";
+import { DocumentsManager } from "@/components/lawyer/documents-manager";
 
 interface CaseItem {
   id: string;
@@ -288,6 +289,9 @@ export default function LawyerCases() {
                 className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[80px] resize-none"
                 placeholder="Novedades del tramite..."
               />
+            </div>
+            <div className="pt-2 border-t border-slate-100">
+              <DocumentsManager kind="case" id={editModal.id} />
             </div>
             <div className="flex gap-3">
               <Button

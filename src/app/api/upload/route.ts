@@ -7,7 +7,12 @@ import { sanitizeFolderName } from "@/lib/validations";
 import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const PUBLIC_UPLOAD_FOLDERS = new Set(["lawyer-applications"]);
-const AUTHENTICATED_UPLOAD_FOLDERS = new Set(["lawyers", "general", "message-attachments"]);
+const AUTHENTICATED_UPLOAD_FOLDERS = new Set([
+  "lawyers",
+  "general",
+  "message-attachments",
+  "case-documents",
+]);
 
 const IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp", "image/jpg"]);
 const DOC_MIME = new Set(["application/pdf"]);
@@ -64,15 +69,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (folder === "case-documents") {
+      const role = (session?.user as any)?.role;
+      if (role !== "lawyer") {
+        return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      }
+    }
+
     if (!file) {
       return NextResponse.json({ error: "No se envió archivo" }, { status: 400 });
     }
 
-    const isMessageAttachment = folder === "message-attachments";
+    const allowsPdf = folder === "message-attachments" || folder === "case-documents";
     const isImage = IMAGE_MIME.has(file.type);
     const isPdf = DOC_MIME.has(file.type);
 
-    if (isMessageAttachment) {
+    if (allowsPdf) {
       if (!isImage && !isPdf) {
         return NextResponse.json(
           { error: "Solo se permiten imágenes (JPG, PNG, WEBP) o PDF" },
@@ -86,7 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const maxSize = isMessageAttachment ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+    const maxSize = allowsPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: `El archivo no puede superar ${Math.round(maxSize / (1024 * 1024))}MB` },
@@ -105,7 +117,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const allowedMime = isMessageAttachment
+    const allowedMime = allowsPdf
       ? new Set<string>([
           "image/jpeg",
           "image/png",

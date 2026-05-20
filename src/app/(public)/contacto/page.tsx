@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Canales de contacto de Leyes Digital. Soporte, consultas y reclamos.",
 };
 
-const CONTACT_EMAIL = "contacto@leyesdigital.com";
+const CONTACT_EMAIL = "plataformalegales@gmail.com";
 const CONTACT_PHONE = "+54 9 223 618-2864";
 
 export default function ContactPage() {

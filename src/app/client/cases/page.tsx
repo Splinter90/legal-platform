@@ -104,7 +104,9 @@ export default function ClientCases() {
                       <p className="text-sm font-medium text-slate-700 mb-1">
                         Descripcion
                       </p>
-                      <p className="text-sm text-slate-600">{c.description}</p>
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap break-words">
+                        {c.description}
+                      </p>
                     </div>
                   )}
 
@@ -113,7 +115,9 @@ export default function ClientCases() {
                       <p className="text-sm font-medium text-brand-700 mb-1">
                         Actualizaciones
                       </p>
-                      <p className="text-sm text-brand-600">{c.updates}</p>
+                      <p className="text-sm text-brand-600 whitespace-pre-wrap break-words">
+                        {c.updates}
+                      </p>
                     </div>
                   )}
 

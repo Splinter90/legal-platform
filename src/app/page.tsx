@@ -47,7 +47,7 @@ const organizationJsonLd = {
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",
-    email: "contacto@leyesdigital.com",
+    email: "plataformalegales@gmail.com",
     telephone: "+54-9-223-618-2864",
     availableLanguage: ["Spanish"],
   },
@@ -313,7 +313,7 @@ export default function Home() {
               {
                 step: "02",
                 title: "Confirmá con el pago",
-                desc: "Pagás de forma segura con Mercado Pago. Recibís el link de Google Meet por correo.",
+                desc: "Pagás de forma segura con Mercado Pago. Recibís un link de Google Meet.",
                 icon: CreditCard,
               },
               {
@@ -521,7 +521,7 @@ export default function Home() {
               <p className="relative text-lg text-slate-300 mb-8">
                 Explorá el mapa interactivo de Argentina
               </p>
-              <Link href="/mapa">
+              <Link href="/mapa" className="relative inline-block">
                 <Button variant="primary" size="lg">
                   Ver mapa interactivo <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -624,7 +624,7 @@ export default function Home() {
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-brand-400" />
-                  <span className="text-slate-400 text-sm">contacto@leyesdigital.com</span>
+                  <span className="text-slate-400 text-sm break-all">plataformalegales@gmail.com</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-brand-400" />

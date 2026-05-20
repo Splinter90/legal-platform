@@ -120,7 +120,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-brand-400" />
-                  <span className="text-slate-400 text-sm">contacto@leyesdigital.com</span>
+                  <span className="text-slate-400 text-sm break-all">plataformalegales@gmail.com</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-brand-400" />

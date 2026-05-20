@@ -177,14 +177,16 @@ export default function LawyerDashboard() {
         {stats.map((stat, idx) => (
           <Reveal key={stat.label} delay={idx * 60}>
             <Card className="h-full hover:border-brand-500/40">
-              <CardContent className="flex items-center gap-4 py-6">
-                <div className={`p-3 rounded-2xl ${stat.bg} flex-shrink-0`}>
+              <CardContent className="flex items-center gap-3 py-6">
+                <div className={`p-2.5 rounded-2xl ${stat.bg} flex-shrink-0`}>
                   <div className={stat.color}>{stat.icon}</div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-slate-500 truncate">{stat.label}</p>
+                  <p className="text-xs sm:text-sm text-slate-500 truncate">
+                    {stat.label}
+                  </p>
                   <p
-                    className="text-base sm:text-lg lg:text-xl font-extrabold text-slate-900 whitespace-nowrap truncate leading-tight"
+                    className="text-sm sm:text-base lg:text-lg font-extrabold text-slate-900 whitespace-nowrap leading-tight"
                     title={String(stat.value)}
                   >
                     {stat.value}

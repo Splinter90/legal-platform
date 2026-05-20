@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = "11 de mayo de 2026";
-const CONTACT_EMAIL = "contacto@leyesdigital.com";
+const CONTACT_EMAIL = "plataformalegales@gmail.com";
 
 export default function PrivacyPage() {
   return (

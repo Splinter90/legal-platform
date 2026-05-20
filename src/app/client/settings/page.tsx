@@ -8,6 +8,7 @@ import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { toast } from "sonner";
 import { Trash2, AlertTriangle, Mail, Phone, User as UserIcon, Loader2, Save } from "lucide-react";
 import { PhoneInputAR } from "@/components/ui/phone-input";
+import { normalizePhoneAR, formatPhoneAR } from "@/lib/phone";
 
 type Profile = {
   id: string;
@@ -33,38 +34,65 @@ export default function ClientSettingsPage() {
       .then((p) => {
         setProfile(p);
         setNameInput(p?.name || "");
-        setPhoneInput(p?.phone || "");
+        setPhoneInput(p?.phone ? formatPhoneAR(p.phone) : "");
       })
       .catch(() => setProfile(null));
   }, []);
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
+    const trimmedName = nameInput.trim();
+    if (trimmedName.length < 2) {
+      toast.error("El nombre debe tener al menos 2 caracteres");
+      return;
+    }
+    const phoneTrimmed = phoneInput.trim();
+    let phoneToSend: string | null = null;
+    if (phoneTrimmed) {
+      const normalized = normalizePhoneAR(phoneTrimmed);
+      if (!normalized) {
+        toast.error("El teléfono debe ser un celular argentino válido (ej: +54 9 11 1234-5678)");
+        return;
+      }
+      phoneToSend = normalized;
+    }
     setSavingProfile(true);
     try {
       const res = await fetch("/api/clients/me", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nameInput, phone: phoneInput || null }),
+        body: JSON.stringify({ name: trimmedName, phone: phoneToSend }),
       });
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {}
       if (!res.ok) {
-        toast.error(data?.error || "No se pudo actualizar");
+        const fallback = `No se pudo actualizar (HTTP ${res.status})`;
+        toast.error(data?.error || fallback);
+        if (!data?.error && text) console.error("PUT /api/clients/me response:", text);
         return;
       }
       setProfile(data);
       setNameInput(data.name || "");
-      setPhoneInput(data.phone || "");
+      setPhoneInput(data.phone ? formatPhoneAR(data.phone) : "");
       toast.success("Datos actualizados");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error de red al actualizar");
     } finally {
       setSavingProfile(false);
     }
   }
 
+  const normalizedFormPhone = phoneInput.trim()
+    ? normalizePhoneAR(phoneInput) || ""
+    : "";
   const dirty =
     !!profile &&
     (nameInput.trim() !== (profile.name || "") ||
-      (phoneInput || "") !== (profile.phone || ""));
+      normalizedFormPhone !== (profile.phone || ""));
 
   async function deleteAccount() {
     if (confirmText.trim().toLowerCase() !== "eliminar") return;

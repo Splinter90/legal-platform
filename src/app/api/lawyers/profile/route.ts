@@ -46,11 +46,24 @@ export async function PUT(req: NextRequest) {
     );
   }
 
-  const allowedFields = ["phone", "narrative", "experience", "address", "cbuAlias", "profilePhoto", "specialties"];
+  const allowedFields = ["firstName", "lastName", "phone", "narrative", "experience", "address", "cbuAlias", "profilePhoto", "specialties"];
   const updateData: Record<string, any> = {};
   for (const field of allowedFields) {
     if (body[field] !== undefined) {
       updateData[field] = body[field];
+    }
+  }
+
+  for (const field of ["firstName", "lastName"] as const) {
+    if (updateData[field] !== undefined) {
+      const value = String(updateData[field]).trim();
+      if (value.length < 2 || value.length > 40) {
+        return NextResponse.json(
+          { error: `${field === "firstName" ? "El nombre" : "El apellido"} debe tener entre 2 y 40 caracteres` },
+          { status: 400 }
+        );
+      }
+      updateData[field] = value;
     }
   }
 

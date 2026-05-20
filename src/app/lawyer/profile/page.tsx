@@ -55,6 +55,8 @@ export default function LawyerProfile() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
         phone: form.phone,
         narrative: form.narrative,
         experience: form.experience,
@@ -75,6 +77,10 @@ export default function LawyerProfile() {
     const updated = await res.json();
     setLawyer(updated);
     setForm(updated);
+    const fullName = `${updated.firstName || ""} ${updated.lastName || ""}`.trim();
+    if (fullName) {
+      await updateSession({ name: fullName });
+    }
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -275,6 +281,24 @@ export default function LawyerProfile() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Nombre"
+                  value={form.firstName || ""}
+                  onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                  minLength={2}
+                  maxLength={40}
+                  required
+                />
+                <Input
+                  label="Apellido"
+                  value={form.lastName || ""}
+                  onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                  minLength={2}
+                  maxLength={40}
+                  required
+                />
+              </div>
               <PhoneInputAR
                 label="Celular"
                 value={form.phone || ""}

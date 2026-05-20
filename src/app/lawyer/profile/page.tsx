@@ -1,6 +1,7 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ const SPECIALTY_OPTIONS = [
 
 export default function LawyerProfile() {
   const searchParams = useSearchParams();
+  const { update: updateSession } = useSession();
   const [lawyer, setLawyer] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
@@ -235,6 +237,7 @@ export default function LawyerProfile() {
                   }
                   const updated = await res.json();
                   setLawyer(updated);
+                  await updateSession({ image: updated.profilePhoto ?? null });
                   setForm(updated);
                 }}
               />

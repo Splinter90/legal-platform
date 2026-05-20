@@ -170,7 +170,7 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
         token.role = (user as any).role || "client";
         token.id = user.id;
@@ -180,6 +180,12 @@ export const authOptions: NextAuthOptions = {
         if (token.role === "admin") {
           token.lastActivity = Date.now();
         }
+      }
+
+      if (trigger === "update" && session && typeof session === "object") {
+        const s = session as { name?: string; image?: string | null };
+        if (typeof s.name === "string") token.name = s.name;
+        if (s.image !== undefined) token.picture = s.image ?? null;
       }
 
       if (token.role === "admin") {
@@ -220,22 +226,35 @@ export const authOptions: NextAuthOptions = {
         if (stale) {
           const lawyer = await prisma.lawyer.findUnique({
             where: { id: token.id as string },
-            select: { status: true },
+            select: { status: true, firstName: true, lastName: true, profilePhoto: true },
           });
-          if (lawyer) token.lawyerStatus = lawyer.status;
+          if (lawyer) {
+            token.lawyerStatus = lawyer.status;
+            const fullName = `${lawyer.firstName} ${lawyer.lastName}`.trim();
+            if (fullName) token.name = fullName;
+            if (lawyer.profilePhoto !== undefined) token.picture = lawyer.profilePhoto;
+          }
           token.lawyerStatusCheckedAt = Date.now();
         }
       }
 
-      // Soft-delete check para clientes: corre solo en token refresh (no en sign-in
-      // inicial, donde token.id es el de Google y todavía no se mapeó al Client).
+      // Soft-delete check + refresh de name/image para clientes. Corre solo en
+      // token refresh (no en sign-in inicial, donde token.id es el de Google y
+      // todavía no se mapeó al Client).
       if (!user && !account && token.role === "client" && token.id) {
-        const c = await prisma.client.findUnique({
-          where: { id: token.id as string },
-          select: { deletedAt: true },
-        });
-        if (!c || c.deletedAt) {
-          return {} as any;
+        const lastCheck = (token.clientCheckedAt as number | undefined) ?? 0;
+        const stale = Date.now() - lastCheck > 5 * 60 * 1000;
+        if (stale) {
+          const c = await prisma.client.findUnique({
+            where: { id: token.id as string },
+            select: { deletedAt: true, name: true, image: true },
+          });
+          if (!c || c.deletedAt) {
+            return {} as any;
+          }
+          if (c.name) token.name = c.name;
+          token.picture = c.image ?? null;
+          token.clientCheckedAt = Date.now();
         }
       }
 
@@ -257,6 +276,8 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
         (session.user as any).lawyerStatus = token.lawyerStatus;
+        if (typeof token.name === "string") session.user.name = token.name;
+        if (token.picture !== undefined) session.user.image = (token.picture as string | null) ?? null;
       }
       (session as any).accessToken = token.accessToken;
       (session as any).error = token.error;

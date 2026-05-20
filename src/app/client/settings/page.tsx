@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -20,6 +20,7 @@ type Profile = {
 };
 
 export default function ClientSettingsPage() {
+  const { update: updateSession } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [nameInput, setNameInput] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
@@ -77,6 +78,7 @@ export default function ClientSettingsPage() {
       setProfile(data);
       setNameInput(data.name || "");
       setPhoneInput(data.phone ? formatPhoneAR(data.phone) : "");
+      await updateSession({ name: data.name, image: data.image });
       toast.success("Datos actualizados");
     } catch (err) {
       console.error(err);
@@ -156,6 +158,7 @@ export default function ClientSettingsPage() {
                     }
                     const updated = await res.json();
                     setProfile(updated);
+                    await updateSession({ image: updated.image });
                   }}
                 />
               </div>

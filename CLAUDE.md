@@ -7,9 +7,37 @@ para el abogado y panel admin con métricas y comisiones.
 > Este archivo es **el primer lugar que se lee al arrancar una sesión nueva**.
 > Mantenelo actualizado. No incluyas secrets — viven en `.env` (gitignored).
 
-## ⏯️ Última sesión (19/05/2026)
+## ⏯️ Última sesión (20/05/2026)
 
-Iteración larga sobre **paneles abogado y cliente**. Todos los cambios fueron deployados a prod (Vercel auto-deploy desde `main`).
+Pulido de UI en landing + dashboard abogado + páginas de casos, y se cerró el feature de **foto de perfil para el admin** que había quedado a medias por un corte de luz en la sesión 19/05. Todo pusheado a `main` para auto-deploy en Vercel.
+
+### Fixes UI (commit `95a17bb`)
+
+- **Landing** (`src/app/page.tsx`):
+  - El botón "Ver mapa interactivo" no redirigía porque el `<Link>` quedaba debajo del overlay `hero-rays` (`absolute inset-0`). Fix: `className="relative inline-block"` en el `<Link>` para que reciba el click.
+  - Paso 2 del "Cómo funciona": "Recibís el link de Google Meet por correo." → "Recibís un link de Google Meet." (el Meet se ve en `/client/appointments`, no se manda por mail).
+  - Footer y JSON-LD `schema.org`: email canónico ahora `plataformalegales@gmail.com` (antes `contacto@leyesdigital.com`).
+- **Email de contacto** propagado a todas las páginas públicas:
+  - `src/app/(public)/layout.tsx`, `(public)/contacto/page.tsx`, `(public)/terminos/page.tsx`, `(public)/privacidad/page.tsx`. El `User-Agent` del geocode (`api/geocode/search/route.ts`) sigue con el viejo porque no es visible al usuario.
+- **Dashboard abogado** (`lawyer/dashboard/page.tsx`): card "Ingresos Totales" volvía a desbordar con montos grandes. Bajé el valor a `text-sm sm:text-base lg:text-lg`, achiqué el icono (`p-2.5`) y saqué el `truncate`. Ahora el monto entra completo en una línea sin puntos suspensivos.
+- **Casos** (`lawyer/cases/page.tsx` y `client/cases/page.tsx`): los textos de descripción y actualizaciones desbordaban con palabras/URLs largas. Agregué `whitespace-pre-wrap break-words` a ambos `<p>`. Ahora respeta saltos de línea y corta palabras largas dentro del card.
+
+### Foto de perfil del admin (commit `95a17bb` también)
+
+Feature que había quedado a medio camino en la sesión 19/05 (corte de luz). El schema y el endpoint estaban listos pero el avatar del topbar seguía siendo estático. Cerré el ciclo end-to-end:
+
+- **Schema** (`prisma/schema.prisma`): `Admin.image String?` opcional. `db push` aplicado a sandbox (`Abogados`) y a producción.
+- **API** (`src/app/api/admin/settings/route.ts`): GET y PUT manejan `image` con validación de que sea URL de Cloudinary.
+- **UI settings** (`src/app/admin/settings/page.tsx`): card "Mi cuenta" con `AvatarUpload`. Tras subir/quitar foto, llama a `PUT /api/admin/settings` y dispara `updateSession({ image })` para refrescar el avatar del topbar sin re-login.
+- **Auth callback** (`src/lib/auth.ts`):
+  - `authorize` del provider `admin-login` ahora devuelve `image` además de `id`/`name`/`role`.
+  - Bloque nuevo en el callback `jwt` (gemelo a los de cliente/abogado): cada 5 min refresca `username` e `image` desde DB para el rol admin (`token.adminCheckedAt`). Si la fila del admin desaparece, el token se invalida.
+- **Topbar dinámico**:
+  - `components/layout/user-menu.tsx`: el componente ahora acepta `role: "client" | "lawyer" | "admin"`. El admin va a `/admin/settings` y muestra "Administrador" como rol en el dropdown.
+  - `components/layout/dashboard-layout.tsx`: el avatar estático con iniciales se reemplazó por el `<UserMenu>` para los tres roles. Ahora el admin tiene el mismo dropdown que los demás (Actualizar perfil + Cerrar sesión).
+  - `src/app/admin/layout.tsx`: pasa `userImage={session?.user?.image}` al `DashboardLayout`.
+
+### Iteración larga del 19/05/2026 (commits `5625301`, `4b27c12`, `46f7bc5`, `037f5e5`, `3f8c531`, `1f7130d`, `c81b835`)
 
 ### Panel abogado (commit `5625301` + `c81b835`)
 
@@ -53,9 +81,8 @@ Propagación de cambios de perfil a la session sin re-login (`src/lib/auth.ts`):
 
 - **Imagen hero de la landing** (commit `3f8c531`): cambié el URL de Unsplash a `photo-1589829545856-d10d557cf95f` (Lady Justice). El usuario reportó que se había roto la imagen anterior. Si la nueva tampoco se ve, fallback: subir imagen propia a `public/images/justice.jpg`.
 - **Google Calendar end-to-end**: queda verificar que al reservar una cita y procesarse el pago en prod, el evento se crea en el calendario del abogado. Si no, casi seguro es que **Google Calendar API no está habilitada** en Google Cloud Console.
-- **Cambios externos sin commitear** (no son de esta sesión): `prisma/schema.prisma`, `src/app/admin/settings/page.tsx`, `src/app/api/admin/settings/route.ts`. Decidí no commitearlos hasta que el usuario los revise.
 
-**Commits del día (orden cronológico):**
+**Commits (orden cronológico):**
 - `5625301` — feat(lawyer): mejoras panel abogado + Google Calendar reconnect (P1–P9)
 - `4b27c12` — feat(client): settings editables + avatar dropdown + mapa mas fluido
 - `46f7bc5` — fix(client/settings): normalizar telefono + try/catch en PUT
@@ -63,8 +90,9 @@ Propagación de cambios de perfil a la session sin re-login (`src/lib/auth.ts`):
 - `3f8c531` — fix(landing): restaurar imagen de la estatua de la justicia
 - `1f7130d` — fix(auth): propagar cambios de perfil a la session sin re-login
 - `c81b835` — feat(lawyer): editar nombre y apellido, propagar a la session
+- `0f56245` — docs(CLAUDE.md): registrar sesion del 19/05/2026
 
-## ⏮️ Sesión anterior (13/05/2026)
+## ⏮️ Sesión del 13/05/2026
 
 **Commits del día**:
 - `fbd6613` — BookingCalendar mensual con slots disponibles + filtros de reseñas (1-5★) en perfil del abogado + mapa con geolocalización del cliente + marcadores con foto de perfil.
@@ -297,7 +325,7 @@ Para que MP llegue al webhook en dev, el `.env` está apuntado a una URL de **ng
 
 ## Roadmap pendiente (orden sugerido)
 
-> Última sesión: 13/05/2026. Próxima vez: arrancar leyendo esto y preguntar al
+> Última sesión: 20/05/2026. Próxima vez: arrancar leyendo esto y preguntar al
 > usuario por dónde sigue. **Lista corta y priorizada** del análisis completo
 > que hicimos. Los Tier están ordenados de "más urgente" a "más diferenciador".
 

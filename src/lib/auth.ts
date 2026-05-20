@@ -97,7 +97,12 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        return { id: admin.id, name: admin.username, role: "admin" } as any;
+        return {
+          id: admin.id,
+          name: admin.username,
+          image: admin.image ?? null,
+          role: "admin",
+        } as any;
       },
     }),
   ],
@@ -179,6 +184,7 @@ export const authOptions: NextAuthOptions = {
         }
         if (token.role === "admin") {
           token.lastActivity = Date.now();
+          token.picture = (user as any).image ?? null;
         }
       }
 
@@ -235,6 +241,23 @@ export const authOptions: NextAuthOptions = {
             if (lawyer.profilePhoto !== undefined) token.picture = lawyer.profilePhoto;
           }
           token.lawyerStatusCheckedAt = Date.now();
+        }
+      }
+
+      if (!user && !account && token.role === "admin" && token.id) {
+        const lastCheck = (token.adminCheckedAt as number | undefined) ?? 0;
+        const stale = Date.now() - lastCheck > 5 * 60 * 1000;
+        if (stale) {
+          const admin = await prisma.admin.findUnique({
+            where: { id: token.id as string },
+            select: { username: true, image: true },
+          });
+          if (!admin) {
+            return {} as any;
+          }
+          if (admin.username) token.name = admin.username;
+          token.picture = admin.image ?? null;
+          token.adminCheckedAt = Date.now();
         }
       }
 

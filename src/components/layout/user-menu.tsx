@@ -5,7 +5,7 @@ import { signOut } from "next-auth/react";
 import { UserCircle, LogOut, ChevronDown } from "lucide-react";
 
 interface UserMenuProps {
-  role: "client" | "lawyer";
+  role: "client" | "lawyer" | "admin";
   userName?: string;
   userImage?: string | null;
 }
@@ -32,8 +32,15 @@ export function UserMenu({ role, userName, userImage }: UserMenuProps) {
     };
   }, [open]);
 
-  const profileHref = role === "client" ? "/client/settings" : "/lawyer/profile";
-  const profileLabel = role === "client" ? "Actualizar perfil" : "Actualizar perfil";
+  const profileHref =
+    role === "client"
+      ? "/client/settings"
+      : role === "admin"
+      ? "/admin/settings"
+      : "/lawyer/profile";
+  const profileLabel = "Actualizar perfil";
+  const roleLabel =
+    role === "client" ? "Cliente" : role === "admin" ? "Administrador" : "Abogado";
   const initial = userName?.[0]?.toUpperCase() || "U";
 
   return (
@@ -74,9 +81,7 @@ export function UserMenu({ role, userName, userImage }: UserMenuProps) {
               <p className="text-sm font-semibold text-slate-900 truncate">
                 {userName}
               </p>
-              <p className="text-xs text-slate-500 capitalize">
-                {role === "client" ? "Cliente" : "Abogado"}
-              </p>
+              <p className="text-xs text-slate-500">{roleLabel}</p>
             </div>
           )}
           <Link

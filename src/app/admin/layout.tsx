@@ -23,7 +23,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if ((session?.user as any)?.role !== "admin") return null;
 
   return (
-    <DashboardLayout role="admin" userName={session?.user?.name || "Admin"}>
+    <DashboardLayout
+      role="admin"
+      userName={session?.user?.name || "Admin"}
+      userImage={session?.user?.image}
+    >
       {children}
     </DashboardLayout>
   );

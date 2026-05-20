@@ -1,10 +1,12 @@
 ﻿"use client";
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, DollarSign, CreditCard, Lock, User, ExternalLink, Calculator } from "lucide-react";
 import { TwoFactorPanel } from "./TwoFactorPanel";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 import {
   MP_SCHEME_DEFAULTS,
   MP_OFFICIAL_FEES_URL,
@@ -51,6 +53,7 @@ function Row({
 }
 
 export default function AdminSettings() {
+  const { update: updateSession } = useSession();
   const [settings, setSettings] = useState({
     consultationFee: 0,
     commissionPercent: 0,
@@ -60,6 +63,7 @@ export default function AdminSettings() {
     mpIvaPercent: 21,
     cbuAlias: "",
     username: "",
+    image: null as string | null,
   });
   const [simulatorAmount, setSimulatorAmount] = useState(0);
   const [passwords, setPasswords] = useState({
@@ -413,6 +417,37 @@ export default function AdminSettings() {
                 Guardar
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Mi cuenta */}
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <User className="w-5 h-5 text-brand-600" />
+              Mi cuenta
+            </h2>
+          </CardHeader>
+          <CardContent>
+            <AvatarUpload
+              currentUrl={settings.image}
+              fallbackInitials={(settings.username || "A").slice(0, 2).toUpperCase()}
+              size="lg"
+              onChange={async (url) => {
+                const res = await fetch("/api/admin/settings", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ image: url }),
+                });
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  throw new Error(data?.error || "Error");
+                }
+                const updated = await res.json();
+                setSettings((s) => ({ ...s, image: updated.image }));
+                await updateSession({ image: updated.image ?? null });
+              }}
+            />
           </CardContent>
         </Card>
 

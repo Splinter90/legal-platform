@@ -26,6 +26,7 @@ export async function GET() {
     mpIvaPercent: admin.mpIvaPercent,
     cbuAlias: admin.cbuAlias,
     username: admin.username,
+    image: admin.image,
   });
 }
 
@@ -99,6 +100,16 @@ export async function PUT(req: NextRequest) {
     updateData.username = body.username.trim();
   }
 
+  if (body.image !== undefined) {
+    if (body.image !== null && typeof body.image !== "string") {
+      return NextResponse.json({ error: "image inválida" }, { status: 400 });
+    }
+    if (typeof body.image === "string" && !/^https:\/\/res\.cloudinary\.com\//.test(body.image)) {
+      return NextResponse.json({ error: "image debe ser de Cloudinary" }, { status: 400 });
+    }
+    updateData.image = body.image;
+  }
+
   if (body.newPassword) {
     if (!body.currentPassword) {
       return NextResponse.json({ error: "Debes ingresar la contraseña actual" }, { status: 400 });
@@ -146,5 +157,6 @@ export async function PUT(req: NextRequest) {
     mpIvaPercent: updated.mpIvaPercent,
     cbuAlias: updated.cbuAlias,
     username: updated.username,
+    image: updated.image,
   });
 }

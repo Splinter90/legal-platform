@@ -12,6 +12,7 @@ model Admin {
   username      String   @unique
   email         String?  @unique
   password      String
+  image         String?
   cbuAlias      String?
   consultationFee   Float  @default(5000)
   subscriptionFee   Float  @default(5000)

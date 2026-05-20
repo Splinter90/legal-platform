@@ -36,7 +36,7 @@ function lawyerIcon(lawyer: LawyerMarker, isTop: boolean) {
     ? "linear-gradient(135deg, #f59e0b, #ef4444)"
     : "linear-gradient(135deg, #3b82f6, #6366f1)";
   const inner = lawyer.profilePhoto
-    ? `<img src="${lawyer.profilePhoto}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`
+    ? `<img src="${lawyer.profilePhoto}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;" />`
     : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:${
         isTop ? 16 : 14
       }px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:50%;">${initials}</div>`;
@@ -95,6 +95,14 @@ export default function LawyersMap({
     [userLocation]
   );
 
+  const lawyerIcons = useMemo(
+    () =>
+      new Map(
+        lawyers.map((l) => [l.id, lawyerIcon(l, l.rating >= 4.8)])
+      ),
+    [lawyers]
+  );
+
   if (!mounted) {
     return (
       <div
@@ -129,10 +137,13 @@ export default function LawyersMap({
         zoom={13}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
+        preferCanvas={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          updateWhenIdle={true}
+          keepBuffer={4}
         />
         <RecenterOnUser coords={userCoords} />
 
@@ -146,7 +157,7 @@ export default function LawyersMap({
           <Marker
             key={lawyer.id}
             position={[lawyer.latitude, lawyer.longitude]}
-            icon={lawyerIcon(lawyer, lawyer.rating >= 4.8)}
+            icon={lawyerIcons.get(lawyer.id)!}
           >
             <Popup maxWidth={320} minWidth={280}>
               <div className="p-1">

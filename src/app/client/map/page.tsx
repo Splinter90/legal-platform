@@ -37,10 +37,9 @@ export default function ClientMapPage() {
   useEffect(() => {
     fetch("/api/lawyers/map")
       .then((r) => r.json())
-      .then((data) => {
-        setLawyers(data);
-        setLoading(false);
-      });
+      .then((data) => setLawyers(Array.isArray(data) ? data : []))
+      .catch(() => setLawyers([]))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {

@@ -23,7 +23,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   if ((session?.user as any)?.role !== "client") return null;
 
   return (
-    <DashboardLayout role="client" userName={session?.user?.name || ""}>
+    <DashboardLayout
+      role="client"
+      userName={session?.user?.name || ""}
+      userImage={session?.user?.image || null}
+    >
       {children}
     </DashboardLayout>
   );

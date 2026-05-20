@@ -4,8 +4,10 @@ import { signOut } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { toast } from "sonner";
-import { Download, Trash2, ShieldCheck, AlertTriangle, Mail, Phone, User as UserIcon, Loader2 } from "lucide-react";
+import { Trash2, AlertTriangle, Mail, Phone, User as UserIcon, Loader2, Save } from "lucide-react";
+import { PhoneInputAR } from "@/components/ui/phone-input";
 
 type Profile = {
   id: string;
@@ -18,7 +20,9 @@ type Profile = {
 
 export default function ClientSettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [exporting, setExporting] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -26,36 +30,41 @@ export default function ClientSettingsPage() {
   useEffect(() => {
     fetch("/api/clients/me")
       .then((r) => r.json())
-      .then(setProfile)
+      .then((p) => {
+        setProfile(p);
+        setNameInput(p?.name || "");
+        setPhoneInput(p?.phone || "");
+      })
       .catch(() => setProfile(null));
   }, []);
 
-  async function exportData() {
-    setExporting(true);
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
     try {
-      const res = await fetch("/api/clients/me/export");
+      const res = await fetch("/api/clients/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nameInput, phone: phoneInput || null }),
+      });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data?.error || "No se pudo exportar tus datos");
+        toast.error(data?.error || "No se pudo actualizar");
         return;
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const stamp = new Date().toISOString().slice(0, 10);
-      a.download = `leyes-digital-mis-datos-${stamp}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Descargamos tus datos");
-    } catch {
-      toast.error("Error al exportar");
+      setProfile(data);
+      setNameInput(data.name || "");
+      setPhoneInput(data.phone || "");
+      toast.success("Datos actualizados");
     } finally {
-      setExporting(false);
+      setSavingProfile(false);
     }
   }
+
+  const dirty =
+    !!profile &&
+    (nameInput.trim() !== (profile.name || "") ||
+      (phoneInput || "") !== (profile.phone || ""));
 
   async function deleteAccount() {
     if (confirmText.trim().toLowerCase() !== "eliminar") return;
@@ -95,60 +104,83 @@ export default function ClientSettingsPage() {
           {!profile ? (
             <div className="h-16 bg-slate-100 rounded-xl animate-pulse" />
           ) : (
-            <dl className="space-y-3 text-sm">
-              <div className="flex items-start gap-3">
-                <dt className="w-32 flex items-center gap-1.5 text-slate-500">
-                  <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                  Nombre
-                </dt>
-                <dd className="text-slate-900 font-medium">{profile.name}</dd>
+            <>
+              <div className="mb-5 pb-5 border-b border-slate-100">
+                <AvatarUpload
+                  currentUrl={profile.image}
+                  fallbackInitials={(profile.name || "U")
+                    .split(" ")
+                    .map((p) => p[0])
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
+                  size="lg"
+                  onChange={async (url) => {
+                    const res = await fetch("/api/clients/me", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ image: url }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json().catch(() => ({}));
+                      throw new Error(data?.error || "Error");
+                    }
+                    const updated = await res.json();
+                    setProfile(updated);
+                  }}
+                />
               </div>
-              <div className="flex items-start gap-3">
-                <dt className="w-32 flex items-center gap-1.5 text-slate-500">
-                  <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-                  Email
-                </dt>
-                <dd className="text-slate-900 font-medium break-all">{profile.email}</dd>
-              </div>
-              <div className="flex items-start gap-3">
-                <dt className="w-32 flex items-center gap-1.5 text-slate-500">
-                  <Phone className="w-3.5 h-3.5" aria-hidden="true" />
-                  Teléfono
-                </dt>
-                <dd className="text-slate-900 font-medium">
-                  {profile.phone || <span className="text-slate-400">Sin completar</span>}
-                </dd>
-              </div>
-            </dl>
+              <form onSubmit={saveProfile} className="space-y-4">
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
+                    <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                    Nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    minLength={2}
+                    maxLength={80}
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
+                    <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    disabled
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed break-all"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    El email está asociado a tu cuenta de Google y no se puede cambiar.
+                  </p>
+                </div>
+                <PhoneInputAR
+                  label="Teléfono"
+                  value={phoneInput}
+                  onChange={setPhoneInput}
+                />
+                <Button
+                  type="submit"
+                  disabled={!dirty || savingProfile}
+                  className="inline-flex items-center gap-2"
+                >
+                  {savingProfile ? (
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Save className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  {savingProfile ? "Guardando..." : "Guardar cambios"}
+                </Button>
+              </form>
+            </>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Privacidad */}
-      <Card className="mb-6">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-2 mb-2">
-            <ShieldCheck className="w-5 h-5 text-brand-600" />
-            <h2 className="text-lg font-semibold text-slate-900">Privacidad</h2>
-          </div>
-          <p className="text-sm text-slate-600 mb-4">
-            Descargá una copia completa de tus datos personales en un archivo ZIP
-            (citas, mensajes, reseñas, pagos, favoritos). Es tu derecho de acceso
-            según la Ley 25.326.
-          </p>
-          <Button
-            onClick={exportData}
-            disabled={exporting}
-            aria-busy={exporting}
-            className="inline-flex items-center gap-2"
-          >
-            {exporting ? (
-              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Download className="w-4 h-4" aria-hidden="true" />
-            )}
-            {exporting ? "Generando ZIP..." : "Exportar mis datos"}
-          </Button>
         </CardContent>
       </Card>
 

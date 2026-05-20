@@ -23,7 +23,11 @@ export default function LawyerLayout({ children }: { children: React.ReactNode }
   if ((session?.user as any)?.role !== "lawyer") return null;
 
   return (
-    <DashboardLayout role="lawyer" userName={session?.user?.name || ""}>
+    <DashboardLayout
+      role="lawyer"
+      userName={session?.user?.name || ""}
+      userImage={session?.user?.image || null}
+    >
       {children}
     </DashboardLayout>
   );

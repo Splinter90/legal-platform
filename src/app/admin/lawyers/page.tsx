@@ -469,7 +469,7 @@ export default function AdminLawyers() {
                 <p className="text-2xl font-bold text-amber-600">
                   {selected._count.reviews}
                 </p>
-                <p className="text-xs text-slate-500">Resenas</p>
+                <p className="text-xs text-slate-500">Reseñas</p>
               </div>
             </div>
 

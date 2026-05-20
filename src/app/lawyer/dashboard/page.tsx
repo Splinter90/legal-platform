@@ -284,12 +284,12 @@ export default function LawyerDashboard() {
             <CardContent className="py-6">
               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                 <Star className="w-5 h-5 fill-accent-400 text-accent-500" />
-                Ultimas Resenas
+                Últimas Reseñas
               </h3>
               {data.reviews.length === 0 ? (
                 <div className="text-center py-8">
                   <Star className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-slate-500 text-sm">No hay resenas aun</p>
+                  <p className="text-slate-500 text-sm">No hay reseñas aún</p>
                 </div>
               ) : (
                 <div className="space-y-3">

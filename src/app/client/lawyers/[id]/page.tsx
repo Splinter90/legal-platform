@@ -177,7 +177,7 @@ export default function LawyerProfilePage() {
               <div className="flex items-center gap-2 mt-2">
                 <Stars rating={Math.round(lawyer.rating)} size="sm" />
                 <span className="text-sm text-slate-500">
-                  ({lawyer.reviewCount} resenas)
+                  ({lawyer.reviewCount} reseñas)
                 </span>
               </div>
               <div className="flex flex-wrap gap-4 mt-3 text-sm text-slate-600">
@@ -359,7 +359,7 @@ function ReviewsSection({
       <CardContent className="py-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h2 className="text-lg font-semibold text-slate-900">
-            Resenas ({filtered.length}
+            Reseñas ({filtered.length}
             {filtered.length !== reviews.length ? ` de ${reviews.length}` : ""})
           </h2>
           <select

@@ -40,37 +40,51 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const skipNextLookupRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    const q = (value || "").trim();
     if (skipNextLookupRef.current) {
       skipNextLookupRef.current = false;
       return;
     }
+    const q = (value || "").trim();
     if (q.length < 4) {
       setOptions([]);
       setOpen(false);
+      setLoading(false);
       return;
     }
+
+    const ctrl = new AbortController();
+    const myId = ++requestIdRef.current;
+
     const handle = setTimeout(async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams({ q });
         if (city) params.set("city", city);
         if (province) params.set("province", province);
-        const res = await fetch(`/api/geocode/search?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          setOptions(Array.isArray(data.results) ? data.results : []);
-          setOpen(true);
-        }
-      } catch {
-        // ignore
+        const res = await fetch(`/api/geocode/search?${params}`, {
+          signal: ctrl.signal,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (myId !== requestIdRef.current) return;
+        if (skipNextLookupRef.current) return;
+        const results = Array.isArray(data.results) ? data.results : [];
+        setOptions(results);
+        setOpen(results.length > 0);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
       } finally {
-        setLoading(false);
+        if (myId === requestIdRef.current) setLoading(false);
       }
     }, 350);
-    return () => clearTimeout(handle);
+
+    return () => {
+      ctrl.abort();
+      clearTimeout(handle);
+    };
   }, [value, city, province]);
 
   useEffect(() => {
@@ -80,6 +94,16 @@ export function AddressAutocomplete({
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  function handleSelect(opt: AddressOption) {
+    skipNextLookupRef.current = true;
+    requestIdRef.current++;
+    setOptions([]);
+    setOpen(false);
+    setLoading(false);
+    onChange(opt.address);
+    onSelect?.(opt);
+  }
 
   return (
     <div ref={wrapperRef} className="relative">
@@ -101,12 +125,8 @@ export function AddressAutocomplete({
             <button
               key={`${opt.label}-${i}`}
               type="button"
-              onClick={() => {
-                skipNextLookupRef.current = true;
-                onChange(opt.address);
-                onSelect?.(opt);
-                setOpen(false);
-              }}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(opt)}
               className="w-full text-left px-4 py-2.5 text-sm hover:bg-brand-50 border-b border-slate-100 last:border-0 flex items-start gap-2"
             >
               <MapPin className="w-4 h-4 mt-0.5 text-brand-500 flex-shrink-0" />

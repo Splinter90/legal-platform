@@ -126,7 +126,7 @@ export default function AdminClients() {
               <p className="text-2xl font-bold text-slate-900">
                 {clients.reduce((sum, c) => sum + c._count.reviews, 0)}
               </p>
-              <p className="text-xs text-slate-500">Total Resenas</p>
+              <p className="text-xs text-slate-500">Total Reseñas</p>
             </div>
           </CardContent>
         </Card>
@@ -214,7 +214,7 @@ export default function AdminClients() {
                   </div>
                   <div className="flex items-center gap-4 text-sm text-slate-500">
                     <span>{client._count.appointments} citas</span>
-                    <span>{client._count.reviews} resenas</span>
+                    <span>{client._count.reviews} reseñas</span>
                     <span>{formatDate(client.createdAt)}</span>
                   </div>
                 </div>

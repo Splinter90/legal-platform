@@ -27,6 +27,8 @@ interface LawyersMapProps {
   showLink?: boolean;
   height?: string;
   userLocation?: { latitude: number; longitude: number } | null;
+  initialCenter?: [number, number];
+  initialZoom?: number;
 }
 
 function lawyerIcon(lawyer: LawyerMarker, isTop: boolean) {
@@ -83,6 +85,8 @@ export default function LawyersMap({
   showLink = true,
   height = "600px",
   userLocation,
+  initialCenter,
+  initialZoom = 13,
 }: LawyersMapProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -119,6 +123,7 @@ export default function LawyersMap({
 
   const center: [number, number] =
     userCoords ||
+    initialCenter ||
     (lawyers.length > 0
       ? [
           lawyers.reduce((s, l) => s + l.latitude, 0) / lawyers.length,
@@ -134,7 +139,7 @@ export default function LawyersMap({
       <style>{`@keyframes pulse{0%{transform:scale(1);opacity:.35}70%{transform:scale(1.8);opacity:0}100%{transform:scale(1.8);opacity:0}}`}</style>
       <MapContainer
         center={center}
-        zoom={13}
+        zoom={initialZoom}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
         preferCanvas={true}

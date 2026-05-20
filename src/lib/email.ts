@@ -342,7 +342,7 @@ export async function sendReviewRequestToClient(
     subject: "Como fue tu consulta? - LegalConnect",
     body: `<p>Hola <strong>${clientName}</strong>,</p>
       <p>Esperamos que tu consulta con <strong>${lawyerFullName}</strong> haya ido bien.</p>
-      <p>Te tomas un minuto para dejarle una resena? A otros clientes les sirve muchisimo para elegir.</p>
+      <p>Te tomas un minuto para dejarle una reseña? A otros clientes les sirve muchisimo para elegir.</p>
       <p><a href="${link}" style="display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;text-decoration:none;border-radius:10px;font-weight:600">Calificar mi consulta</a></p>`,
   });
 }

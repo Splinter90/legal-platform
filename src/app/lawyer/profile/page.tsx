@@ -259,7 +259,7 @@ export default function LawyerProfile() {
                   </Badge>
                   <Stars rating={Math.round(lawyer.rating)} size="sm" />
                   <span className="text-sm text-slate-500">
-                    ({lawyer.reviewCount} resenas)
+                    ({lawyer.reviewCount} reseñas)
                   </span>
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-sm text-slate-500">

@@ -200,7 +200,7 @@ export default function PublicLawyersPage() {
                     </li>
                     <li className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />
-                      Ver perfiles, calificaciones y resenas reales
+                      Ver perfiles, calificaciones y reseñas reales
                     </li>
                     <li className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-brand-600 flex-shrink-0" />

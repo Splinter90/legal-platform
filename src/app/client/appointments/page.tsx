@@ -331,7 +331,7 @@ export default function ClientAppointments() {
                             setReviewComment("");
                           }}
                           className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-                          title="Dejar resena"
+                          title="Dejar reseña"
                         >
                           <Star className="w-4 h-4 text-amber-500" />
                         </button>
@@ -430,7 +430,7 @@ export default function ClientAppointments() {
       <Modal
         isOpen={!!reviewModal}
         onClose={() => setReviewModal(null)}
-        title="Dejar Resena"
+        title="Dejar Reseña"
       >
         {reviewModal && (
           <div className="space-y-4">
@@ -489,7 +489,7 @@ export default function ClientAppointments() {
                   submitReview(reviewModal.id, reviewModal.lawyer.id)
                 }
               >
-                {submittingReview ? "Enviando..." : "Enviar Resena"}
+                {submittingReview ? "Enviando..." : "Enviar Reseña"}
               </Button>
             </div>
           </div>
